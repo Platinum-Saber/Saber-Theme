@@ -4,8 +4,9 @@ package com.sabertheme.core.designsystem.glass
  * Decides how alive the glass may be. Pure Kotlin; the Android glue
  * ([EffectsController]) feeds it events and timestamps.
  *
- * - Active: full effects, tilt sensor on.
- * - Idle: no touch for [idleTimeoutMs]; sensor off, glass keeps its look.
+ * - Active: full effects, tilt sensor at full rate.
+ * - Idle: no touch for [idleTimeoutMs]; tilt keeps following at a slow rate
+ *   while home is visible (off when paused), glass keeps its look.
  * - Saver / Throttled: Power Saving or thermal pressure; sensor off, effects halved.
  * - Reduced: "Remove animations"; sensor off, springs snap.
  */
@@ -13,7 +14,11 @@ class EffectsPolicy(private val idleTimeoutMs: Long = IDLE_TIMEOUT_MS) {
 
     enum class Mode { Active, Idle, Saver, Throttled, Reduced }
 
-    data class State(val mode: Mode, val intensity: Float, val sensorsOn: Boolean)
+    enum class SensorRate { Off, Slow, Fast }
+
+    data class State(val mode: Mode, val intensity: Float, val sensor: SensorRate) {
+        val sensorsOn: Boolean get() = sensor != SensorRate.Off
+    }
 
     var userIntensity: Float = 1f
         set(value) { field = value.coerceIn(0f, 1f) }
@@ -42,7 +47,13 @@ class EffectsPolicy(private val idleTimeoutMs: Long = IDLE_TIMEOUT_MS) {
             Mode.Saver, Mode.Throttled -> userIntensity * REDUCED_FACTOR
             else -> userIntensity
         }
-        return State(mode, intensity, sensorsOn = mode == Mode.Active && userIntensity > 0f)
+        val sensor = when {
+            userIntensity <= 0f -> SensorRate.Off
+            mode == Mode.Active -> SensorRate.Fast
+            mode == Mode.Idle && resumed -> SensorRate.Slow
+            else -> SensorRate.Off
+        }
+        return State(mode, intensity, sensor)
     }
 
     companion object {

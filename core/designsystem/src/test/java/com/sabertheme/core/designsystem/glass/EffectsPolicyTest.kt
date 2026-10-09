@@ -2,6 +2,7 @@ package com.sabertheme.core.designsystem.glass
 
 import com.google.common.truth.Truth.assertThat
 import com.sabertheme.core.designsystem.glass.EffectsPolicy.Mode
+import com.sabertheme.core.designsystem.glass.EffectsPolicy.SensorRate
 import org.junit.Test
 
 class EffectsPolicyTest {
@@ -11,11 +12,12 @@ class EffectsPolicyTest {
     fun touchMakesActiveAndIdlesOutAfterThreeSeconds() {
         policy.onInteraction(1_000)
         assertThat(policy.evaluate(1_000).mode).isEqualTo(Mode.Active)
-        assertThat(policy.evaluate(1_000).sensorsOn).isTrue()
+        assertThat(policy.evaluate(1_000).sensor).isEqualTo(SensorRate.Fast)
         assertThat(policy.evaluate(3_999).mode).isEqualTo(Mode.Active)
         val idle = policy.evaluate(4_000)
         assertThat(idle.mode).isEqualTo(Mode.Idle)
-        assertThat(idle.sensorsOn).isFalse()
+        // Tilt keeps following while home is visible, just slower.
+        assertThat(idle.sensor).isEqualTo(SensorRate.Slow)
         assertThat(policy.idleAtMs()).isEqualTo(4_000)
     }
 

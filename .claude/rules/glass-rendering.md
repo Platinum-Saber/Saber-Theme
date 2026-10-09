@@ -21,8 +21,10 @@ paths:
 - **Draw-phase only:** tilt, parallax, press and intensity are snapshot
   state in `GlassEnvironment` / `GlassPressState`; read them only in draw,
   `graphicsLayer` or `Modifier.Node` draw code, never in composition.
-- Sensors run only while `EffectsPolicy` is Active (touched within 3 s,
-  resumed, no Power Saving, no thermal throttling, animations on). Check
-  with `adb shell dumpsys sensorservice` (Previous Registrations).
+- Tilt runs at `SENSOR_DELAY_GAME` while `EffectsPolicy` is Active (touched
+  within 3 s) and `SENSOR_DELAY_UI` while Idle; off when paused, Power
+  Saving, thermal throttling or animations off. A still phone must render
+  0 frames (deadband in `TiltFilter`; check `dumpsys gfxinfo` over 10 s).
+  Registrations: `adb shell dumpsys sensorservice` (Previous Registrations).
 - Every state change animates with a `GlassMotion` spring; pass
   `env.reducedMotion` so "Remove animations" snaps.

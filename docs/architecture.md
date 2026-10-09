@@ -163,7 +163,10 @@ being busy or costly.
    alpha that keeps primary text >= 4.5:1 over the palette sample under each
    surface (results cached per quantised rect).
 5. **Alive, never busy.** `EffectsPolicy` (pure Kotlin, tested) is Active
-   only within 3 s of a touch while resumed; Idle turns the sensor off;
+   only within 3 s of a touch while resumed; Idle keeps tilt following at
+   `SENSOR_DELAY_UI` (~15 Hz) while home is visible (off when paused);
+   `TiltFilter` smooths by time, survives rate switches, and skips changes
+   below a deadband so a still phone doesn't redraw home;
    Power Saving / thermal >= moderate halve effects and turn the sensor
    off; "Remove animations" snaps springs. The user intensity slider scales
    refraction, rim and bloom.
