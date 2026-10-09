@@ -21,18 +21,18 @@ graph TD
   app --> drawer[":feature:drawer"]
   app --> widgets[":feature:widgets"]
   app --> settings[":feature:settings"]
-  glance[":widgets-glance"] --> widgets
-  iconpack[":iconpack"] --> icons[":core:icons"]
-  home --> ds[":core:designsystem"]
+  glance[":widgets-glance (M3)"] -.-> widgets
+  iconpack[":iconpack (M3)"] -.-> icons[":core:icons"]
+  home --> ui[":core:ui"]
+  drawer --> ui
   home --> data[":core:data"]
-  home --> icons
-  drawer --> ds
   drawer --> data
-  drawer --> icons
-  widgets --> ds
-  widgets --> data
-  settings --> ds
   settings --> data
+  widgets --> ds[":core:designsystem"]
+  settings --> ds
+  ui --> ds
+  ui --> data
+  ui --> icons
   data --> model[":core:model"]
   icons --> model
   ds --> model
@@ -40,17 +40,18 @@ graph TD
 
 | Module | Responsibility |
 |---|---|
-| `:app` | `HomeActivity` (MAIN/HOME, `singleTask`), nav host, Hilt root, wiring |
-| `:core:designsystem` | Tokens, `GlassSurface`, typography, AGSL shaders, theme |
-| `:core:model` | Pure Kotlin: `AppEntry`, `HomeLayout` (`HomePage`, `Placed`, `HomeItem`, `WidgetType`), policy, codec |
-| `:core:data` | DataStore (layout, prefs), `AppRepository` (LauncherApps), wallpaper store |
-| `:core:icons` | Vector glyphs, `ComponentName` → glyph map, monochrome fallback |
-| `:feature:home` | Pager, grid, dock, edit mode, folders |
-| `:feature:drawer` | App drawer and search |
-| `:feature:widgets` | Native widget composables and `WidgetDataSource` implementations |
-| `:feature:settings` | Wallpaper, glass intensity, grid size, icon options |
-| `:widgets-glance` | Exported AppWidgets (Glance), reusing the widgets data layer |
-| `:iconpack` | Separate `applicationId` APK; `appfilter.xml` generated from `:core:icons` |
+| `:app` | `HomeActivity` (MAIN/HOME, `singleTask`), Hilt root; hosts Home + overlays (drawer, widget picker, settings) as state, no nav library |
+| `:core:designsystem` | Tokens, `GlassSurface`, typography, AGSL shaders, theme, `GlassSheet` / `GlassSlider` / `GlassSwitch` |
+| `:core:model` | Pure Kotlin: `AppEntry`, `HomeLayout` (`HomePage`, `Placed`, `HomeItem`, `WidgetType`), `DragSource` / `DropTarget`, `HomeLayoutPolicy`, codec, `GlassSettings` |
+| `:core:data` | DataStore (layout, settings, `LaunchStats`), `AppRepository` (LauncherApps, launch, uninstall), `HomeRepository`, wallpaper store |
+| `:core:icons` | Vector glyphs, `ComponentName` → glyph map, monochrome fallback, `GlyphImages` cache |
+| `:core:ui` | Shared app UI: `AppTile` / `HomeAppIcon` / `FolderIcon` (+ `LocalIconAppearance`), `GlassMenu`, `LauncherApp`, `AppIconResolver`, `AppLauncher`, `AppActions` (app long-press menu) |
+| `:feature:home` | Pager, grid, dock, folders, edit mode (drag and drop) |
+| `:feature:drawer` | App drawer and universal search |
+| `:feature:widgets` | Native glass widgets, `WidgetDataSource` implementations, `WidgetCatalog`, widget picker |
+| `:feature:settings` | Settings page: wallpaper, glass, icons, default home, about |
+| `:widgets-glance` (M3) | Exported AppWidgets (Glance), reusing the widgets data layer |
+| `:iconpack` (M3) | Separate `applicationId` APK; `appfilter.xml` generated from `:core:icons` |
 
 **Dependency rule:** `feature:*` → `core:*` only. Features never depend on
 each other; `:app` composes them. (`:widgets-glance` depends on the data
@@ -62,8 +63,11 @@ layer of `:feature:widgets`; if that grows, move the sources to
   ← repositories ← sources.
 - Persistence: DataStore for layout and settings. One UI may kill or reset
   the launcher, so no state lives only in memory.
-  - `SettingsRepository`: glass intensity and `WallpaperChoice`
-    (`Bundled(id)` | `Photo(fileName)`).
+  - `SettingsRepository`: `GlassSettings` = intensity, `WallpaperChoice`
+    (`Bundled(id)` | `Photo(fileName)`), `iconStyle` (Tile | Bare),
+    `showLabels`, `tiltEnabled`.
+  - `LaunchStats`: launch counts per app (top 64), recorded by
+    `AppLauncher`, read by the drawer's Suggested row.
   - `LayoutRepository`: `HomeLayout(dock, pages: List<HomePage>)`, each
     page a list of `Placed(item, col, row, spanX, spanY)` with
     `HomeItem.App | Folder | Widget(widgetId, WidgetType, config)`, in the
@@ -79,7 +83,10 @@ layer of `:feature:widgets`; if that grows, move the sources to
   to 15 apps from `USEFUL_GLYPHS`. `reconcile` only removes uninstalled
   apps (never appends, never adds or removes pages) and keeps apps of
   locked/paused profiles (`AppRepository.Installed.lockedProfiles`). Edit
-  helpers: `firstFreeSpot`, `add`, `move`, `remove`, `makeFolder`.
+  operations: `drop(layout, DragSource, DropTarget)` (cell, dock slot, onto
+  an app or folder, Remove; returns the layout unchanged when not allowed),
+  `add` / `firstFreeSpot` (new widgets, "Add to home"), `removeApp`,
+  `renameFolder`, `addPage`, `removePage` (empty pages only).
 - Apps: `LauncherApps` + `LauncherApps.Callback` → `AppRepository`, so work
   profile and Secure Folder apps appear (see `.claude/rules/launcher-manifest.md`).
 
@@ -126,8 +133,10 @@ The main technical risk; constraints live in `.claude/rules/glass-rendering.md`.
      neighbours composed (`beyondViewportPageCount = 1`) made it worse
      (1.9%): the spike moves to mid-swipe and off-screen glass re-records.
      Step 2 (2-page curated home, placeholder widgets): jank 0.2–0.3%,
-     p90 6 ms; most of the 12 swipes now hit the edge. Re-check with real
-     widgets (step 4).
+     p90 6 ms; most of the 12 swipes now hit the edge.
+     Step 4 (live widgets on page 1, 12 swipes): jank 1.09%, p50 6 ms /
+     p90 8 ms / p99 15 ms, GPU p90 4 ms. Reported, not tuned: perf work
+     was closed for M2.
    - The `benchmark` build is profileable and not obfuscated
      (`app/src/benchmark`, `benchmark-rules.pro`) for `simpleperf --app`.
 6. Glance fallback maps the same tokens to a translucent tinted rounded
@@ -167,41 +176,108 @@ GlassEnvironment (CompositionLocal, HomeActivity root)
  └─ effects       ← Glass Lab switches (debug and benchmark builds)
 ```
 
-Overlays (open folder) blur the home content with a layer `BlurEffect`
-only while visible; glass itself never blurs live.
+Overlays (open folder, drawer, settings) blur the home content with a
+layer `BlurEffect` only while visible (`HomeScreen(backgroundBlur)` reads
+the drawer/settings progress in the layer block); glass itself never
+blurs live. The Tilt effects setting maps onto `env.effects.tilt`.
 
 ## Home
-- `HomeScreen`: pager of positioned 4x5 grids (72 dp app cells spread edge
-  to edge, 56 dp Thin tiles, 18 dp margin; widgets align with the tiles'
-  outer edges with 12 dp gaps), morphing page indicator, search pill
-  (visual only until the drawer), Thick dock of four apps. Widgets render
-  through the `widgetContent` slot (placeholder until `:feature:widgets`).
-- Long-press empty space: menu with Wallpaper & style / Launcher settings
-  (open `HomeOptionsSheet`: wallpapers, photo import, intensity, Glass Lab);
-  Edit home screen and Widgets are M2. Long-press an app: App info.
-- Launch: `LauncherApps.startMainActivity` with a clip-reveal from the
-  icon's window bounds.
-- Home is curated; every app lives in the drawer (M2 step 5). Apps of a
-  locked profile keep their slot and are hidden until it unlocks.
+- `HomeScreen`: pager of positioned 4x5 grids (`HomeGrid`: 72 dp app cells
+  spread edge to edge, 56 dp tiles, 18 dp margin; widgets align with the
+  tiles' outer edges with 12 dp gaps), morphing page indicator, search
+  pill, Thick dock of up to four apps. Widgets render through the
+  `widgetContent(widget, size, modifier)` slot, which `:app` fills with
+  `WidgetHost`.
+- Swipe up anywhere, or tap the search pill, opens the drawer
+  (`onOpenDrawer(withKeyboard)`). The Home button (`onNewIntent`) closes
+  the drawer, picker and settings and leaves edit mode.
+- Long-press empty space: Edit home screen, Widgets (picker), Wallpaper &
+  style and Launcher settings (both open Settings). Long-press an app: the
+  `AppActions` menu (Remove from home, App info, Uninstall for
+  user-installed apps).
+- Launch: `AppLauncher` → `LauncherApps.startMainActivity` with a
+  clip-reveal from the icon's window bounds; counts the launch.
+- Home is curated; every app lives in the drawer. Apps of a locked profile
+  keep their slot and are hidden until it unlocks.
+
+### Edit mode
+- Enter from the menu, or long-press an app, folder or widget and drag (the
+  item's menu closes as the drag starts). The pager scales to 0.8 inside a
+  dashed outline; top bar "Page X of N" + Done; page thumbnails with a "+"
+  page; toolbar Wallpaper / Widgets / Settings. Empty pages show "Remove
+  empty page". Back, Done or Home leaves edit mode.
+- `DragState`: items opt in with `Modifier.pickup` (in edit mode a move past
+  touch slop picks up; otherwise long-press first). The root `dragTracker`
+  then owns the pointer in the Initial pass, moves the ghost (`DragLayer`,
+  a lifted copy drawn in a layer) and resolves the target against the
+  registered page, dock and Remove-zone coordinates: a free cell (widgets
+  keep their span), the centre of an app or folder (folder), a dock slot,
+  or Remove. A dashed outline previews the target. Resting at a screen edge
+  flips the page.
+- Release commits through `HomeViewModel.drop` → `HomeLayoutPolicy.drop`;
+  the layout shows at once through a `pending` override that clears when
+  `LayoutRepository` catches up. The ghost springs (`GlassMotion.morph`)
+  into its slot, into the folder or Remove zone, or back home when the drop
+  is refused. Haptics on pick-up, drop and refusal.
+- Open folders: drag an app out to move it (a folder left with one app
+  becomes that app); the title is editable while editing.
+
+## Drawer and search
+- `AppDrawer` (`:feature:drawer`): full-height Thick glass sheet with a
+  handle, search field, Suggested row (top 4 by `LaunchStats`), "All apps"
+  A–Z grid (locale collation) and an alphabet rail with haptic ticks. Drag
+  the header, or pull past the top of the list, to close; Back and Home
+  close it. Long-press an app: Add to home (first free spot from the apps
+  page, new page if full), App info, Uninstall.
+- Universal search, debounced 120 ms, sections Apps / Contacts / Settings /
+  Web. `AppSearch` ranks exact > prefix > word start or initials >
+  substring > fuzzy subsequence on the label, with the package one notch
+  lower (boilerplate segments ignored, never fuzzy). Contacts use the
+  provider's filter URI behind an inline "Search contacts" permission row.
+  `SettingsSearch` matches every query word against the titles and keywords
+  of a built-in `Settings.ACTION_*` list. The IME Search key opens the top
+  result.
+
+## Settings
+- `SettingsScreen` (`:feature:settings`): full-screen Thick glass page
+  (Figma "Settings") with groups Wallpaper (bundled + imported photos),
+  Glass (intensity slider with live preview, tilt), Icons (Glass tile /
+  Bare, labels), Home screen (default home via `RoleManager.ROLE_HOME`,
+  grid) and About (version; Glass Lab in debug and benchmark builds).
+- Icon style and labels reach every surface through `LocalIconAppearance`
+  (`:core:ui`), provided at the root. Bare draws the glyph without glass at
+  30/56 of the tile size; folders keep their glass.
 
 ## Widget system
 - `WidgetDataSource<T>` exposes `Flow<WidgetState<T>>` (Loading, Ready,
-  NeedsPermission, Error).
+  NeedsPermission, Error). Each source is a `@Singleton` whose flow is
+  shared in `WidgetScope` with `WhileShown` (5 s stop timeout), so a widget
+  on screen keeps one receiver or observer and nothing runs while home is
+  stopped. `WidgetSources` bundles them; `:app` injects it once.
+- `WidgetPermissions.gated(permission)` emits NeedsPermission until granted
+  and restarts the source when a grant appears (`recheck()` on resume and
+  after the permission result). The widget shows "Allow", which asks at
+  runtime, opens app info after a permanent denial, or opens
+  notification-listener settings.
 - Sizes on the cell grid: 2×1, 2×2, 4×1, 4×2.
   `HomeItem.Widget` + its `Placed` span is stored in the layout;
   `WidgetType.sizes` lists the allowed sizes (first = default).
+  `WidgetViews.kt` draws each type per size (Figma "Widgets" board).
 
 | Widget | Source | Permission / access |
 |---|---|---|
-| Clock | system time ticker | none |
-| Date / Calendar | `CalendarContract` | `READ_CALENDAR` |
-| Weather | Open-Meteo (no API key) | `ACCESS_COARSE_LOCATION`, `INTERNET` |
+| Clock | `ACTION_TIME_TICK` / time / zone broadcasts | none |
+| Calendar | `CalendarContract.Instances`, next 7 days, observer + 5 min ticks | `READ_CALENDAR` |
+| Weather | Open-Meteo (no API key) at a coarse fix; JSON cached 30 min in DataStore `weather` | `ACCESS_COARSE_LOCATION`, `INTERNET` |
 | Battery | sticky `ACTION_BATTERY_CHANGED` | none |
-| Media | `MediaSessionManager` | notification listener access |
-| Next alarm | `AlarmManager.nextAlarmClock` | none |
+| Media | `MediaSessionManager` + `MediaListenerService`; play/pause/skip | notification listener access |
+| Next alarm | `AlarmManager.nextAlarmClock` + `ACTION_NEXT_ALARM_CLOCK_CHANGED` | none |
 
-Glance widgets reuse the same sources, refreshed by WorkManager plus
-broadcast triggers (time, battery, alarm changed).
+- `WidgetCatalog` (title, category, permission) and `WidgetPreview` (sample
+  data) feed `WidgetPicker`: category chips, every type at every size, tap
+  to add at the first free spot from the current page.
+- M3: Glance widgets reuse the same sources, refreshed by WorkManager plus
+  broadcast triggers (time, battery, alarm changed).
 
 ## Icon system
 - Glyphs live in `design/icons/glyphs.js` (24-unit grid, 1.75 stroke,
@@ -210,7 +286,8 @@ broadcast triggers (time, battery, alarm changed).
   `GeneratedGlyphs.kt` (`AppGlyph`, `UiGlyph`, package map from
   `design/icons/packages.json`); `node tools/build-plugin.mjs` bundles the
   Figma plugin into `design/figma-plugin/dist/code.js`.
-- Rendering: glyph centred on a glass squircle, or bare-glyph mode.
+- Rendering: glyph centred on a glass squircle, or bare (Settings → Icon
+  style), via `LocalIconAppearance`.
 - Lookup order: mapped glyph → adaptive-icon monochrome layer → generated
   letter glyph.
 - `:iconpack` packages the same drawables with generated `appfilter.xml`

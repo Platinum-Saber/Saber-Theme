@@ -1,5 +1,7 @@
 # Milestone 2 — In-launcher experience
 
+**Status:** done (2026-10-10). Follow-up: `handoffs/m3-glance-iconpack.md`.
+
 ## Context
 M1 shipped (pushed to `origin/main`): glass engine, living-glass reactive layer, custom wallpapers, home with every app on pages. M1 left paging jank at 2.3% (target < 1%). The user chose for M2:
 - **Scope:** app drawer + universal search, native glass widgets, edit mode, settings. Glance exported widgets and the icon-pack APK move to **M3**.

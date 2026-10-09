@@ -1,6 +1,6 @@
 # Handoff: Milestone 2 — in-launcher experience
 
-**Goal:** Build M2 per `docs/plans/m2-in-launcher.md`; steps 1–7 done; only step 8 (docs + wrap-up, M3 handoff) remains.
+**Goal:** Build M2 per `docs/plans/m2-in-launcher.md`; **complete** (steps 1–8). Continue with `handoffs/m3-glance-iconpack.md`.
 
 ## Decisions
 - M2 = drawer/search, native widgets, edit mode, settings. Glance widgets + icon-pack APK are M3.
@@ -41,4 +41,4 @@
 - Untested: edge-flip to the next page while dragging; contacts search (READ_CONTACTS not granted), Uninstall on a third-party app, Add/Remove home round trip on device, Suggested row (fills as launches are counted); Media widget (picker-only, needs notification access); fresh-install default layout on device (unit-tested only; don't `pm clear` the user's phone); locked-profile behaviour on device; photo-wallpaper import.
 
 ## Next step
-M2 step 8 (`docs/plans/m2-in-launcher.md`): update `docs/architecture.md` (module graph incl. `:core:ui`, `:feature:widgets/drawer/settings`; layout v2 + edit ops; widgets; drawer/search; edit mode; settings; perf numbers: 1.09% jank / p90 8 ms after widgets), `.claude/rules/launcher-manifest.md` (INTERNET, COARSE_LOCATION, READ_CALENDAR, READ_CONTACTS, REQUEST_DELETE_PACKAGES, notification-listener service, adjustResize), then write the M3 handoff (Glance exported widgets + icon-pack APK).
+M2 is done. Next milestone: `handoffs/m3-glance-iconpack.md`.
