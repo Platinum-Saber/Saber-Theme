@@ -33,6 +33,7 @@ import com.sabertheme.feature.home.HomeOptionsSheet
 import com.sabertheme.feature.home.HomeScreen
 import com.sabertheme.feature.home.HomeViewModel
 import com.sabertheme.feature.widgets.WidgetHost
+import com.sabertheme.feature.widgets.WidgetPicker
 import com.sabertheme.feature.widgets.WidgetSources
 import com.sabertheme.launcher.debug.FrameStatsOverlay
 import com.sabertheme.launcher.debug.GlassLab
@@ -65,8 +66,15 @@ class HomeActivity : ComponentActivity() {
             var optionsOpen by rememberSaveable { mutableStateOf(false) }
             var frameOverlay by rememberSaveable { mutableStateOf(false) }
             val drawer = rememberDrawerState()
+            var widgetPickerOpen by rememberSaveable { mutableStateOf(false) }
+            val homePressCount by homePresses.collectAsStateWithLifecycle()
 
-            LaunchedEffect(Unit) { homePresses.drop(1).collect { drawer.close() } }
+            LaunchedEffect(Unit) {
+                homePresses.drop(1).collect {
+                    drawer.close()
+                    widgetPickerOpen = false
+                }
+            }
 
             LaunchedEffect(settings.intensity) { previewIntensity = null }
             BackdropLoader(env, remember(settings.wallpaper) { viewModel.backdropSource(settings.wallpaper) })
@@ -81,13 +89,18 @@ class HomeActivity : ComponentActivity() {
                                 viewModel,
                                 onOpenOptions = { optionsOpen = true },
                                 onOpenDrawer = { drawer.open(keyboard = it) },
+                                onOpenWidgets = { widgetPickerOpen = true },
                                 backgroundBlur = { drawer.fraction },
+                                resetSignal = homePressCount,
                                 widgetContent = { widget, size, modifier -> WidgetHost(widgets, widget, size, modifier) },
                             )
                         } else {
                             WallpaperLayer()
                         }
                         AppDrawer(drawer, drawerViewModel)
+                        WidgetPicker(widgetPickerOpen, onDismiss = { widgetPickerOpen = false }) { type, size ->
+                            viewModel.addWidget(type, size)
+                        }
                         if (frameOverlay) FrameStatsOverlay(Modifier.align(Alignment.TopCenter))
                         HomeOptionsSheet(
                             visible = optionsOpen,

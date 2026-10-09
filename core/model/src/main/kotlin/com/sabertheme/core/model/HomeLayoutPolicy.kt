@@ -184,6 +184,108 @@ object HomeLayoutPolicy {
         }
     }
 
+    /**
+     * Moves [source] to [target] in one step. Returns [layout] unchanged when
+     * the drop is not allowed: occupied or out-of-bounds cells, a full dock,
+     * non-apps into the dock or a folder, a missing source or target.
+     * [newFolderId] names the folder an app-on-app drop creates.
+     */
+    fun drop(layout: HomeLayout, source: DragSource, target: DropTarget, newFolderId: String): HomeLayout {
+        if (source is DragSource.Page && target is DropTarget.Cell) {
+            val (page, placed) = find(layout, source.itemId) ?: return layout
+            if (page == target.page && placed.col == target.col && placed.row == target.row) return layout
+        }
+        val lifted = lift(layout, source) ?: return layout
+        val item = lifted.item
+        val result = when (target) {
+            is DropTarget.Cell -> {
+                val placed = Placed(item, target.col, target.row, lifted.spanX, lifted.spanY)
+                val page = lifted.layout.pages.getOrNull(target.page)
+                if (page == null || !placed.inBounds || page.items.any { it.overlaps(placed) }) {
+                    null
+                } else {
+                    lifted.layout.updatePage(target.page) { it.copy(items = it.items + placed) }
+                }
+            }
+            is DropTarget.Dock -> {
+                val dock = lifted.layout.dock
+                if (item !is HomeItem.App || dock.size >= HomeLayout.DOCK_SIZE) {
+                    null
+                } else {
+                    lifted.layout.copy(dock = dock.toMutableList().apply { add(target.index.coerceIn(0, dock.size), item.key) })
+                }
+            }
+            is DropTarget.Onto -> (item as? HomeItem.App)?.let { merge(lifted.layout, target.itemId, it.key, newFolderId) }
+            DropTarget.Remove -> lifted.layout
+        }
+        return result ?: layout
+    }
+
+    fun renameFolder(layout: HomeLayout, folderId: String, name: String): HomeLayout {
+        val clean = name.trim().ifEmpty { return layout }
+        return layout.copy(
+            pages = layout.pages.map { page ->
+                page.copy(
+                    items = page.items.map { placed ->
+                        val item = placed.item
+                        if (item is HomeItem.Folder && item.folderId == folderId) placed.copy(item = item.copy(name = clean)) else placed
+                    },
+                )
+            },
+        )
+    }
+
+    fun addPage(layout: HomeLayout): HomeLayout = layout.copy(pages = layout.pages + HomePage.Empty)
+
+    /** Only empty pages go, and the last page always stays. */
+    fun removePage(layout: HomeLayout, index: Int): HomeLayout {
+        val page = layout.pages.getOrNull(index) ?: return layout
+        if (page.items.isNotEmpty() || layout.pages.size <= 1) return layout
+        return layout.copy(pages = layout.pages.filterIndexed { i, _ -> i != index })
+    }
+
+    private class Lifted(val layout: HomeLayout, val item: HomeItem, val spanX: Int, val spanY: Int)
+
+    private fun lift(layout: HomeLayout, source: DragSource): Lifted? = when (source) {
+        is DragSource.Page -> find(layout, source.itemId)?.let { (_, placed) ->
+            Lifted(remove(layout, source.itemId), placed.item, placed.spanX, placed.spanY)
+        }
+        is DragSource.Dock -> if (source.key in layout.dock) {
+            Lifted(layout.copy(dock = layout.dock - source.key), HomeItem.App(source.key), 1, 1)
+        } else {
+            null
+        }
+        is DragSource.FolderApp -> {
+            val folderItemId = "folder:${source.folderId}"
+            val (pageIndex, placed) = find(layout, folderItemId) ?: return null
+            val folder = placed.item as HomeItem.Folder
+            if (source.key !in folder.apps) return null
+            val apps = folder.apps - source.key
+            val rest = when (apps.size) {
+                0 -> null
+                1 -> placed.copy(item = HomeItem.App(apps.single()))
+                else -> placed.copy(item = folder.copy(apps = apps))
+            }
+            val updated = layout.updatePage(pageIndex) { page ->
+                page.copy(items = page.items.mapNotNull { if (it.item.id == folderItemId) rest else it })
+            }
+            Lifted(updated, HomeItem.App(source.key), 1, 1)
+        }
+    }
+
+    /** App [key] onto [targetId]: an app becomes a two-app folder in its slot, a folder gains the app. */
+    private fun merge(layout: HomeLayout, targetId: String, key: AppKey, folderId: String): HomeLayout? {
+        val (pageIndex, target) = find(layout, targetId) ?: return null
+        val merged = when (val item = target.item) {
+            is HomeItem.App -> if (item.key == key) null else HomeItem.Folder(folderId, "Folder", listOf(item.key, key))
+            is HomeItem.Folder -> if (key in item.apps) null else item.copy(apps = item.apps + key)
+            is HomeItem.Widget -> null
+        } ?: return null
+        return layout.updatePage(pageIndex) { page ->
+            page.copy(items = page.items.map { if (it.item.id == targetId) it.copy(item = merged) else it })
+        }
+    }
+
     fun find(layout: HomeLayout, itemId: String): Pair<Int, Placed>? {
         layout.pages.forEachIndexed { index, page ->
             page.items.firstOrNull { it.item.id == itemId }?.let { return index to it }

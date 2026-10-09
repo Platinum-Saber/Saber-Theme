@@ -40,8 +40,8 @@ object WidgetCatalog {
 
 /** Static [type] widget at [size] with the Figma sample data, for the picker. */
 @Composable
-fun WidgetPreview(type: WidgetType, size: WidgetSize, modifier: Modifier = Modifier) {
-    WidgetFrame(size, modifier, onClick = null) {
+fun WidgetPreview(type: WidgetType, size: WidgetSize, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
+    WidgetFrame(size, modifier, onClick = onClick) {
         when (type) {
             WidgetType.Clock -> ClockContent(size, Samples.clock, Samples.alarm)
             WidgetType.Alarm -> AlarmContent(size, Samples.alarm, Samples.now, is24Hour = true)

@@ -1,6 +1,6 @@
 # Handoff: Milestone 2 — in-launcher experience
 
-**Goal:** Build M2 per `docs/plans/m2-in-launcher.md`; steps 1–5 done, continue at step 6 (edit mode + widget picker), then settings (7), docs (8).
+**Goal:** Build M2 per `docs/plans/m2-in-launcher.md`; steps 1–6 done, continue at step 7 (settings), then docs (8).
 
 ## Decisions
 - M2 = drawer/search, native widgets, edit mode, settings. Glance widgets + icon-pack APK are M3.
@@ -26,13 +26,16 @@
 - `feature/drawer/` — `AppDrawer` + `DrawerState` (hoisted in `HomeActivity`; `fraction` drives home blur via `HomeScreen(backgroundBlur)`), `DrawerViewModel`, `AppSearch` (ranking + rail sections), `SettingsSearch`, `ContactSearch`. Home opens it via `onOpenDrawer(withKeyboard)` (swipe up / search pill); Home button closes it (`onNewIntent`).
 - `core/ui/.../AppActions.kt` — shared app long-press menu (`MenuOrigin.Home`/`Drawer`), add/remove home via `LayoutRepository.update` + `HomeLayoutPolicy.add`/`removeApp`. `MenuItem.badge` replaces the hard-coded "Soon".
 - `core/data/.../LaunchStats.kt` — launch counts (recorded in `AppLauncher.launch`), `LaunchStats.top` for Suggested.
+- Edit mode (`feature/home`): `DragState.kt` (pickup modifier, root `dragTracker`, target resolution, ghost `DragLayer`), `HomeGrid.kt` (geometry + hit-testing), `EditChrome.kt` (top bar / Remove zone, page thumbnails, toolbar, remove-empty-page). All layout edits go through `HomeLayoutPolicy.drop`/`renameFolder`/`addPage`/`removePage` (`core/model/.../HomeEdit.kt` for `DragSource`/`DropTarget`) and `HomeViewModel.edit`, which shows the result at once via a `pending` override and saves through `LayoutRepository`.
+- `feature/widgets/.../WidgetPicker.kt` — picker sheet; `:app` opens it from home menu / edit toolbar and calls `HomeViewModel.addWidget` (scrolls to the landing page via `focusPage`).
 - `core/designsystem/.../glass/GlassProgram.kt` — pooled AGSL shaders; `core/icons/.../GlyphImages.kt` — cached glyph bitmaps.
 
 ## State
 - `main` = `origin/main`. Debug build installed on the S23 (holds HOME); M1 layout migrated on device without issues.
 - Benchmark build is profileable + unobfuscated (`simpleperf record --app com.sabertheme.launcher` works). adb is at `C:/Users/User/AppData/Local/Android/Sdk/platform-tools/adb.exe` (not on bash PATH).
 - Calendar + Location now granted by the user on device; calendar shows real events. Weather untested with real data: device location is off (`location_mode=0`), widget now says "Location is off".
-- Untested: contacts search (READ_CONTACTS not granted), Uninstall on a third-party app, Add/Remove home round trip on device, Suggested row (fills as launches are counted); Media widget (picker-only, needs notification access); fresh-install default layout on device (unit-tested only; don't `pm clear` the user's phone); locked-profile behaviour on device; photo-wallpaper import.
+- Edit mode verified on device (then the user's layout restored from backup, see memory `device-layout-backup`): menu → edit, app→app folder, move, rename, drag out of folder, Remove, dock↔page, picker add (new page + scroll), widget span move/remove, remove empty page, long-press-drag from normal mode, layout survives force-stop.
+- Untested: edge-flip to the next page while dragging; contacts search (READ_CONTACTS not granted), Uninstall on a third-party app, Add/Remove home round trip on device, Suggested row (fills as launches are counted); Media widget (picker-only, needs notification access); fresh-install default layout on device (unit-tested only; don't `pm clear` the user's phone); locked-profile behaviour on device; photo-wallpaper import.
 
 ## Next step
-M2 step 6 (`docs/plans/m2-in-launcher.md`): edit mode in `:feature:home` — menu "Edit home screen" / long-press-drag, 0.8 scaled page + thumbnails + toolbar, drag & drop with occupancy preview, folders, dock, Remove target, add/delete pages, folder rename; widget picker sheet from `WidgetCatalog`/`WidgetPreview` (wired from `:app`, features stay independent). Layout writes via `LayoutRepository.update` + `HomeLayoutPolicy`.
+M2 step 7 (`docs/plans/m2-in-launcher.md`): `:feature:settings` — full-screen Thick glass settings (Wallpaper moved from `HomeOptionsSheet` incl. photo import, Glass intensity/tilt, Icons Tile/Bare + labels, Home default via `RoleManager`, About + Glass Lab in debug/benchmark). `GlassSettings` gains `iconStyle`, `showLabels`, `tiltEnabled`; remove `HomeOptionsSheet`; home menu "Launcher settings" and edit toolbar Settings/Wallpaper open it (both currently call `onOpenOptions`).
