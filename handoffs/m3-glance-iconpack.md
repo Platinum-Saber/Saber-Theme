@@ -1,6 +1,6 @@
 # Handoff: Milestone 3 — Glance widgets + icon-pack APK
 
-**Goal:** Plan and build M3: the native widgets exported as Glance AppWidgets for other launchers (`:widgets-glance`), and a standalone ADW/Nova icon-pack APK (`:iconpack`) built from the same glyphs. M2 (in-launcher experience) is complete.
+**Goal:** Build M3 per `docs/plans/m3-glance-iconpack.md` (approved): the native widgets exported as Glance AppWidgets for other launchers (`:widgets-glance`), and a standalone ADW/Nova icon-pack APK (`:iconpack`) built from the same glyphs. M2 (in-launcher experience) is complete.
 
 ## Decisions carried over
 - Glance cannot blur: map the glass tokens to a translucent tint + 1 px border (`.claude/rules/glass-rendering.md`; Figma "Widgets" board already has `Render=Glance` variants of every widget).
@@ -11,7 +11,7 @@
 - Perf work stays closed unless the user reopens it.
 
 ## Files
-- `docs/plans/m2-in-launcher.md` — the M2 plan (done); use its shape for `docs/plans/m3-*.md`.
+- `docs/plans/m3-glance-iconpack.md` — approved M3 plan (steps 1–5, verification). User choices: Glance = Clock/Weather/Calendar/Battery/Alarm (no Media); components dumped from the S23; adaptive icons; icon pack checked in Nova (user installs it).
 - `docs/architecture.md` — current module graph (M3 modules shown dashed), widget system, icon system.
 - `feature/widgets/src/main/java/com/sabertheme/feature/widgets/` — sources, `WidgetState`, `WidgetViews.kt` (per-size layouts to mirror in Glance), `WidgetCatalog`.
 - `design/icons/glyphs.js`, `design/icons/packages.json`, `tools/build-icons.mjs` — icon source and generator.
@@ -25,4 +25,4 @@
 - Known rough edges: dock items don't shift to open a gap while dragging (outline only); locked-profile slots look empty and refuse drops; white "Done" text on the light accent pill is low contrast; `AppRepository.installed` is a cold flow collected separately by home and drawer (two LauncherApps callbacks).
 
 ## Next step
-Enter plan mode and write `docs/plans/m3-glance-iconpack.md`: module changes (`:widgets-glance`, `:iconpack`, maybe `:core:widgetdata`), Glance widget list and sizes, refresh strategy, icon-pack generator output and packaging, steps with on-device verification (add a Saber widget to One UI's launcher; apply the icon pack in Nova). Get user approval before building.
+M3 step 1: extract `:core:widgetdata` from `:feature:widgets` (sources, state, permissions, OpenMeteo, WidgetFormat, WidgetSources, MediaListenerService + manifest entries, tests), add `WidgetDataSource.snapshot()`. No behaviour change; build, test, lint, check home widgets on the S23, commit, push.
