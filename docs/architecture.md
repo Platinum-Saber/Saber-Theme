@@ -62,19 +62,33 @@ layer of `:feature:widgets`; if that grows, move the sources to
   ← repositories ← sources.
 - Persistence: DataStore for layout and settings. One UI may kill or reset
   the launcher, so no state lives only in memory.
+  - `SettingsRepository`: glass intensity and `WallpaperChoice`
+    (`Bundled(id)` | `Photo(fileName)`).
+  - `LayoutRepository`: `HomeLayout` (dock + pages of apps and folders) in
+    the line-based `HomeLayoutCodec` format.
+  - `WallpaperStore`: imported photos copied to `filesDir/wallpapers` as
+    WebP (long edge <= 3072 px); the picker grant is temporary.
+- `HomeLayoutPolicy` (pure Kotlin, tested) builds the first-run layout
+  (dock from phone/messages/browser/camera glyphs, a Social folder, the
+  rest A–Z) and reconciles it with installs and uninstalls.
 - Apps: `LauncherApps` + `LauncherApps.Callback` → `AppRepository`, so work
   profile and Secure Folder apps appear (see `.claude/rules/launcher-manifest.md`).
 
 ## Glass rendering pipeline
 The main technical risk; constraints live in `.claude/rules/glass-rendering.md`.
 
-1. `WallpaperLayer` at the root draws the wallpaper bitmap (bundled abstract
-   wallpapers or a photo-picker image), with light parallax on page scroll.
-2. A **blurred copy** of the wallpaper is computed once per wallpaper change
-   and cached; glass surfaces sample it instead of blurring live.
-3. `GlassSurface(shape, material)` samples the backdrop region under its
-   bounds and runs an AGSL `RuntimeShader` (API 33+) for edge refraction,
-   specular rim highlight, tint and border.
+1. `WallpaperLayer` at the root draws the wallpaper, offset by parallax.
+   Aurora Night/Dawn are drawn procedurally from the Figma blob recipe at
+   window size + 28 dp overscan; photos are centre-cropped to the same size.
+2. `GlassBackdrop.render` (off the main thread, once per wallpaper and
+   window size) downsamples 4x and box-blurs one copy per material, and
+   builds a `WallpaperPalette` (12x26 luminance/colour grid). Photos get the
+   dark theme when their mean luminance is below 0.25.
+3. `GlassSurface(shape, material, onClick, onLongClick)` is a
+   `Modifier.Node` that tracks its window position and runs one AGSL
+   `RuntimeShader` (API 33+) pass over its own bounds: rounded-rect SDF,
+   edge refraction into the blurred copy, adaptive tint, lit specular rim,
+   border and press bloom. Uniforms are pushed only when they change.
 4. Material tokens: `blurRadius`, `tint`, `tintAlpha`, `refraction`,
    `highlight`, `borderAlpha`; presets `thin`, `regular`, `thick`.
 5. Engine: **own AGSL shader** (spike 2026-10-09, `benchmark` build on the
@@ -91,6 +105,56 @@ The main technical risk; constraints live in `.claude/rules/glass-rendering.md`.
    swipe; target < 1% is open.
 6. Glance fallback maps the same tokens to a translucent tinted rounded
    background with a 1 px border.
+
+## Living glass
+The glass reacts to touch, tilt, motion and what is behind it, without
+being busy or costly.
+
+1. **Glass answers every touch.** `Modifier.glassPress`: press compresses
+   (spring, 4%), light blooms from the finger in the shader, haptic tick;
+   release overshoots slightly (`GlassMotion.release`, damping 0.6).
+2. **Light comes from the world.** `TiltSensor` (game rotation vector,
+   `SENSOR_DELAY_GAME`, low-pass, slowly drifting rest pose) moves the
+   virtual light, which drives the rim highlight, and adds tilt parallax.
+3. **Nothing teleports.** Every change uses a `GlassMotion` spring: folders
+   grow from their tile, menus from the touch point, sheets from below.
+4. **Glass adapts to what's behind it.** `TintSolver` picks the lowest tint
+   alpha that keeps primary text >= 4.5:1 over the palette sample under each
+   surface (results cached per quantised rect).
+5. **Alive, never busy.** `EffectsPolicy` (pure Kotlin, tested) is Active
+   only within 3 s of a touch while resumed; Idle turns the sensor off;
+   Power Saving / thermal >= moderate halve effects and turn the sensor
+   off; "Remove animations" snaps springs. The user intensity slider scales
+   refraction, rim and bloom.
+6. **Draw-phase only.** Tilt, parallax, press and intensity are snapshot
+   state in `GlassEnvironment` / `GlassPressState`, read only in draw,
+   `graphicsLayer` or node draw code, so motion never recomposes.
+
+```
+GlassEnvironment (CompositionLocal, HomeActivity root)
+ ├─ backdrop      ← BackdropLoader(BackdropSource.Aurora | Photo)
+ ├─ light         ← TiltSensor
+ ├─ parallax      = tiltParallax + pageParallax (clamped to overscan)
+ ├─ intensity     ← GlassEffectsController(EffectsPolicy, user slider)
+ ├─ reducedMotion ← ANIMATOR_DURATION_SCALE == 0
+ └─ effects       ← Glass Lab switches (debug and benchmark builds)
+```
+
+Overlays (open folder) blur the home content with a layer `BlurEffect`
+only while visible; glass itself never blurs live.
+
+## Home (M1)
+- `HomeScreen`: pager of 4x5 grids (72 dp cells, 56 dp Thin tiles, 18 dp
+  margin), morphing page indicator, search pill (visual only until M2),
+  Thick dock of four apps.
+- Long-press empty space: menu with Wallpaper & style / Launcher settings
+  (open `HomeOptionsSheet`: wallpapers, photo import, intensity, Glass Lab);
+  Edit home screen and Widgets are M2. Long-press an app: App info.
+- Launch: `LauncherApps.startMainActivity` with a clip-reveal from the
+  icon's window bounds.
+- Until the drawer exists every app lives on a home page.
+- Known gap: apps of a locked work profile or Secure Folder drop out of the
+  layout and return at the end when it unlocks.
 
 ## Widget system
 - `WidgetDataSource<T>` exposes `Flow<WidgetState<T>>` (Loading, Ready,
@@ -111,8 +175,12 @@ Glance widgets reuse the same sources, refreshed by WorkManager plus
 broadcast triggers (time, battery, alarm changed).
 
 ## Icon system
-- Glyphs drawn in Figma on a 24-unit grid (1.75 stroke, round caps),
-  exported as SVG and converted to VectorDrawables in `:core:icons`.
+- Glyphs live in `design/icons/glyphs.js` (24-unit grid, 1.75 stroke,
+  round caps), the single source for Figma and Android.
+  `node tools/build-icons.mjs` generates `glyph_*.xml` VectorDrawables and
+  `GeneratedGlyphs.kt` (`AppGlyph`, `UiGlyph`, package map from
+  `design/icons/packages.json`); `node tools/build-plugin.mjs` bundles the
+  Figma plugin into `design/figma-plugin/dist/code.js`.
 - Rendering: glyph centred on a glass squircle, or bare-glyph mode.
 - Lookup order: mapped glyph → adaptive-icon monochrome layer → generated
   letter glyph.

@@ -23,9 +23,11 @@
 - Figma file: https://www.figma.com/design/SN5PAzoJmPaZTz9UdzJ0uu (final per user).
 
 ## State
-- Done and approved: architecture doc, Figma designs (components, 9 widget sets, 63 glyphs, 16 screens).
-- Uncommitted: `docs/`, `.claude/rules/glass-rendering.md`, the `CLAUDE.md` link line, `design/figma-plugin/`, this handoff. User hasn't approved committing; ask first.
-- No Gradle project or Kotlin code exists yet. Nothing has been built or run on the device.
+- M1 steps 1–7 done, committed and pushed to `origin/main`. The S23 holds the HOME role (`cmd role add-role-holder android.app.role.HOME com.sabertheme.launcher 0`).
+- Engine: own AGSL shader (Kyant not benchmarked; see docs/architecture.md). Custom photo wallpapers added on request.
+- Perf on the real home: p90 9 ms, jank 2.3% (target < 1%, open). GPU 3 ms; cost is per-node CPU re-record while paging plus page composition.
+- Not yet tried on device: photo import through the system picker (user to verify).
+- Known gap: locked work profile / Secure Folder apps drop out of the layout and return at the end.
 
 ## Next step
-Ask whether to commit the pending files. Then do plan step 1: create `settings.gradle.kts`, `build-logic`, `gradle/libs.versions.toml` and the M1 modules, plus a `HomeActivity` that follows the manifest rules. Then `./gradlew assembleDebug` / `installDebug` with `JAVA_HOME` set as in CLAUDE.md, and `adb shell cmd package set-home-activity com.sabertheme.launcher/.HomeActivity`.
+Either reduce paging jank below 1% (ideas: derive glass origin from page offset instead of per-node `onGloballyPositioned`; lighter tiles; prewarm page composition) or start M2 (drawer + search, widgets, edit mode, settings, Glance, icon-pack APK). Ask the user which.

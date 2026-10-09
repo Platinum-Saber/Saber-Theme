@@ -19,6 +19,8 @@ Run from the repo root. Always pipe through the trim hook.
 - Install on phone: `./gradlew installDebug 2>&1 | python C:/Users/User/.claude/hooks/trim_output.py`
 - Unit tests: `./gradlew testDebugUnitTest 2>&1 | python C:/Users/User/.claude/hooks/trim_output.py`
 - Lint: `./gradlew lintDebug 2>&1 | python C:/Users/User/.claude/hooks/trim_output.py`
+- Perf: `./gradlew installBenchmark` (R8, debug-signed), then `adb shell dumpsys gfxinfo com.sabertheme.launcher`.
+- Glyphs/plugin: `node tools/build-icons.mjs`, `node tools/build-plugin.mjs` (edit `design/icons/`, never generated files).
 - Device: `adb devices -l`; logs: `adb logcat -d --pid=$(adb shell pidof -s <appId>) | tail -200` (never stream unbounded logcat).
 
 ## House rules
