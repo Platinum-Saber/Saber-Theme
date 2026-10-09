@@ -1,33 +1,32 @@
 # Handoff: Milestone 2 — in-launcher experience
 
-**Goal:** Build M2 per `docs/plans/m2-in-launcher.md`: paging perf fix, layout v2 (curated home + widgets), `:core:ui`, native glass widgets, drawer + universal search, edit mode, settings.
+**Goal:** Build M2 per `docs/plans/m2-in-launcher.md`; steps 1–2 done, continue at step 3 (`:core:ui` extraction), then widgets, drawer/search, edit mode, settings.
 
 ## Decisions
 - M2 = drawer/search, native widgets, edit mode, settings. Glance widgets + icon-pack APK are M3.
-- Curated home: page 1 widgets, page 2 chosen apps; all apps live in the drawer; new installs go to the drawer only. M1 layouts migrate (codec v1 → v2).
-- Search covers apps, contacts (READ_CONTACTS on first use), settings shortcuts, web.
-- Perf first: paging jank must be < 1% (now 2.3%, p90 9 ms, GPU 3 ms) before adding widgets.
-- Features never depend on each other; `:app` wires them with composable slots. Shared UI goes to a new `:core:ui`.
-- Engine is our own AGSL shader (Kyant not used). Glass rules: `.claude/rules/glass-rendering.md`.
-- Commit and push after every step (user wants pushes). Commit trailer: `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+- Perf work is closed (user: no more frame-cost work). Step 1 left 1.0–1.3% jank on the old 7-page layout (first frame of a swipe records a new page); on the 2-page curated home it is 0.2–0.3%, p90 6 ms. Re-check once after step 4 with real widgets, report only.
+- Default widget page: Clock 4x2, Weather 2x2, Calendar 2x2, Battery 2x1, Alarm 2x1. Media is picker-only (needs notification-listener access, and all six don't fit 4x5).
+- Reconcile never appends apps and never adds/removes pages; apps of locked/paused profiles keep their slots.
+- `HomeItem.Folder` field is `folderId` (`HomeItem.id` is the stable cross-type id: `app:`, `folder:`, `widget:`).
+- Widgets reach home through `HomeScreen(widgetContent = …)` slot; `:app` will wire `WidgetHost` in step 4. Features never depend on each other.
+- Commit and push after every step. Trailer: `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 
 ## Files
-- `docs/plans/m2-in-launcher.md` — approved M2 plan (steps 1–8, verification).
-- `docs/architecture.md` — architecture, living glass, perf numbers.
-- `core/designsystem/.../glass/GlassModifier.kt` — glass `Modifier.Node` (position tracking, uniforms, adaptive tint); step 1 target.
-- `core/designsystem/.../glass/GlassSurface.kt` — public glass API (press, shadow, background); split layers here in step 1.
-- `feature/home/.../HomeScreen.kt` — pager, grid, dock, indicator, overlays, page velocity/parallax.
-- `feature/home/.../HomeIcons.kt`, `GlassMenu.kt`, `FolderOverlay.kt` — move icons/menu to `:core:ui` in step 3.
-- `feature/home/.../HomeViewModel.kt` — home state, icon resolution, wallpapers, intensity.
-- `core/model/.../HomeLayout*.kt` — layout model, policy, codec v1 (to become v2).
-- `core/data/` — `AppRepository` (LauncherApps), `LayoutRepository`, `HomeRepository`, `SettingsRepository`, `WallpaperStore`.
-- `app/.../HomeActivity.kt` — root: environment, effects controller, theme, home, options sheet, Glass Lab.
+- `docs/plans/m2-in-launcher.md` — approved plan (steps 1–8, verification).
+- `docs/architecture.md` — architecture, layout v2, perf history.
+- `core/model/.../HomeLayout.kt` — `HomeLayout`, `HomePage`, `Placed`, `HomeItem`, `WidgetType`, `WidgetSize`.
+- `core/model/.../HomeLayoutPolicy.kt` — default layout, reconcile, `firstFreeSpot`/`add`/`move`/`remove`/`makeFolder`/`find` (use these in edit mode and "Add to home").
+- `core/model/.../HomeLayoutCodec.kt` — v2 format + v1 migration.
+- `core/data/.../AppRepository.kt` — `installed: Flow<Installed(apps, lockedProfiles)>`, `apps`, launch, app info.
+- `feature/home/.../HomeScreen.kt` — pager, positioned `HomePage` Layout + `HomeGrid`, `WidgetPlaceholder`, dock, menus.
+- `feature/home/.../HomeIcons.kt`, `GlassMenu.kt` — move to `:core:ui` in step 3.
+- `feature/home/.../HomeViewModel.kt` — UI state mapping, icon resolution (`resolveSuspending` → `AppIconResolver` in step 3).
+- `core/designsystem/.../glass/GlassProgram.kt` — pooled AGSL shaders; `core/icons/.../GlyphImages.kt` — cached glyph bitmaps.
 
 ## State
-- M1 complete and pushed (`main` = `origin/main`, last commit 9f83c1b). Debug build installed on the S23; it holds the HOME role.
-- Benchmark build type (`installBenchmark`) exists; Glass Lab shows in debug and benchmark builds.
-- Untested by the user: photo-wallpaper import via the system picker.
-- Known gap (fixed in M2 step 2): locked work profile / Secure Folder apps drop out of the layout.
+- `main` = `origin/main`. Debug build installed on the S23 (holds HOME); M1 layout migrated on device without issues.
+- Benchmark build is profileable + unobfuscated (`simpleperf record --app com.sabertheme.launcher` works). adb is at `C:/Users/User/AppData/Local/Android/Sdk/platform-tools/adb.exe` (not on bash PATH).
+- Untested: fresh-install default layout on device (unit-tested only; don't `pm clear` the user's phone); locked-profile behaviour on device; photo-wallpaper import.
 
 ## Next step
-M2 step 1: install the benchmark build, capture a Perfetto trace during 12 page swipes (`adb shell perfetto … gfx view sched`), find the per-frame cost. Then split `GlassSurface` so the glass background and content get separate layers, compute the origin in draw from cached coordinates, and re-measure with `dumpsys gfxinfo` (target p90 ≤ 8 ms, jank < 1%). Commands and JAVA_HOME are in `CLAUDE.md`.
+M2 step 3: create `:core:ui` (deps: designsystem, icons, data, model), move `AppTile`/`HomeAppIcon`/`FolderIcon`/`BoundsRef`/`IconLabel` and `GlassMenu` from `feature/home`, add `AppIconResolver` (singleton icon cache from `HomeViewModel.resolveSuspending`) and `AppLauncher` (clip-reveal + `AppRepository.launch`). No behaviour change; build, test, lint, commit, push.
