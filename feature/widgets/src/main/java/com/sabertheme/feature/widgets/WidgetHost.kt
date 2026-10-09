@@ -147,5 +147,7 @@ private fun Context.startSafely(intent: Intent) {
         startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     } catch (e: ActivityNotFoundException) {
         // Nothing handles it on this device; the widget just stays put.
+    } catch (e: SecurityException) {
+        // The handler demands a permission we don't hold; never crash home over a tap.
     }
 }

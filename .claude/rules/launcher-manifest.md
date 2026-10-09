@@ -22,6 +22,9 @@ paths:
   - `:core:widgetdata`: `INTERNET` + `ACCESS_COARSE_LOCATION` (weather,
     coarse only), `READ_CALENDAR`.
   - `:feature:drawer`: `READ_CONTACTS` (search; asked from an inline row).
+  - `:feature:widgets` + `:widgets-glance`: `SET_ALARM` (normal; One UI's
+    `SHOW_ALARMS` handler demands it, or Clock/Alarm taps throw
+    `SecurityException`).
   Runtime permissions are only requested from a visible "Allow" control,
   never at startup.
 - `MediaListenerService` (`:core:widgetdata`) is a `NotificationListenerService`
