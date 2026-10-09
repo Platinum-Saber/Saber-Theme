@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Universal search: contacts section, asked from an inline row on first use. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+</manifest>

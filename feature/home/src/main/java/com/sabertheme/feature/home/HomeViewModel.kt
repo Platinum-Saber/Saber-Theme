@@ -16,9 +16,11 @@ import com.sabertheme.core.model.AppKey
 import com.sabertheme.core.model.GlassSettings
 import com.sabertheme.core.model.HomeItem
 import com.sabertheme.core.model.WallpaperChoice
+import com.sabertheme.core.ui.AppActions
 import com.sabertheme.core.ui.AppIconResolver
 import com.sabertheme.core.ui.AppLauncher
 import com.sabertheme.core.ui.LauncherApp
+import com.sabertheme.core.ui.MenuOrigin
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,6 +38,7 @@ class HomeViewModel @Inject constructor(
     private val wallpaperStore: WallpaperStore,
     private val iconResolver: AppIconResolver,
     private val appLauncher: AppLauncher,
+    private val appActions: AppActions,
     homeRepository: HomeRepository,
 ) : ViewModel() {
 
@@ -68,7 +71,7 @@ class HomeViewModel @Inject constructor(
 
     fun launch(key: AppKey, view: View, bounds: Rect) = appLauncher.launch(key, view, bounds)
 
-    fun openAppInfo(key: AppKey, bounds: Rect) = appLauncher.openAppInfo(key, bounds)
+    fun appMenu(app: LauncherApp, bounds: Rect) = appActions.menu(app.key, bounds, MenuOrigin.Home, onHome = true)
 
     /** Null until DataStore has been read, so the default wallpaper never flashes. */
     val settings: StateFlow<GlassSettings?> =

@@ -69,7 +69,10 @@ class WeatherSource @Inject constructor(
                 emit(WidgetState.Ready(fresh.weather))
                 delay(REFRESH_MS)
             } else {
-                if (entry == null) emit(WidgetState.Error("Weather unavailable"))
+                if (entry == null) {
+                    val locationOn = context.getSystemService(LocationManager::class.java).isLocationEnabled
+                    emit(WidgetState.Error(if (locationOn) "Weather unavailable" else "Location is off"))
+                }
                 delay(RETRY_MS)
             }
         }

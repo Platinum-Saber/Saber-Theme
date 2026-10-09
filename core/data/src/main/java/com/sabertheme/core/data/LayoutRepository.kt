@@ -25,6 +25,15 @@ class LayoutRepository @Inject constructor(private val store: DataStore<Preferen
         store.edit { if (it[LAYOUT] != encoded) it[LAYOUT] = encoded }
     }
 
+    /** Atomically rewrites the saved layout; no-op before the first save. */
+    suspend fun update(transform: (HomeLayout) -> HomeLayout) {
+        store.edit { prefs ->
+            val current = HomeLayoutCodec.decode(prefs[LAYOUT]) ?: return@edit
+            val next = transform(current)
+            if (next != current) prefs[LAYOUT] = HomeLayoutCodec.encode(next)
+        }
+    }
+
     private companion object {
         val LAYOUT = stringPreferencesKey("home_layout")
     }

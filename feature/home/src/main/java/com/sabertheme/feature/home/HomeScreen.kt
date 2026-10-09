@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,6 +44,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -79,6 +82,7 @@ private val WIDGET_GAP = 12.dp
 /** Wallpaper drift per page, as a share of the overscan. */
 private const val PAGE_PARALLAX = 0.45f
 private const val MAX_CONTENT_BLUR_DP = 18f
+private const val SWIPE_UP_DP = 48
 
 /**
  * Home: pages of widgets, apps and folders over the launcher's own wallpaper, with
@@ -90,6 +94,8 @@ fun HomeScreen(
     state: HomeUiState,
     viewModel: HomeViewModel,
     onOpenOptions: () -> Unit,
+    onOpenDrawer: (withKeyboard: Boolean) -> Unit = {},
+    backgroundBlur: () -> Float = { 0f },
     widgetContent: @Composable (HomeItem.Widget, WidgetSize, Modifier) -> Unit = { widget, _, modifier -> WidgetPlaceholder(widget, modifier) },
 ) {
     val env = LocalGlassEnvironment.current
@@ -114,12 +120,16 @@ fun HomeScreen(
         viewModel.launch(app.key, view, bounds)
     }
 
+    fun openDrawer(withKeyboard: Boolean) {
+        openFolder = null
+        menu = null
+        onOpenDrawer(withKeyboard)
+    }
+
     fun appMenu(app: LauncherApp, bounds: Rect, at: Offset) {
         menu = MenuRequest(
             anchor = at,
-            items = listOf(
-                MenuItem(AppGlyph.SETTINGS.drawable, "App info") { viewModel.openAppInfo(app.key, bounds) },
-            ),
+            items = viewModel.appMenu(app, bounds),
         )
     }
 
@@ -127,8 +137,8 @@ fun HomeScreen(
         menu = MenuRequest(
             anchor = at,
             items = listOf(
-                MenuItem(UiGlyph.EDIT.drawable, "Edit home screen", enabled = false) {},
-                MenuItem(UiGlyph.WIDGETS.drawable, "Widgets", enabled = false) {},
+                MenuItem(UiGlyph.EDIT.drawable, "Edit home screen", enabled = false, badge = "Soon") {},
+                MenuItem(UiGlyph.WIDGETS.drawable, "Widgets", enabled = false, badge = "Soon") {},
                 MenuItem(UiGlyph.WALLPAPER.drawable, "Wallpaper & style", onClick = onOpenOptions),
                 MenuItem(AppGlyph.SETTINGS.drawable, "Launcher settings", onClick = onOpenOptions),
             ),
@@ -142,10 +152,24 @@ fun HomeScreen(
                 .fillMaxSize()
                 .graphicsLayer {
                     // Live blur only while an overlay is up (cheap layer effect, not per-surface).
-                    val r = overlay.value.coerceIn(0f, 1f) * MAX_CONTENT_BLUR_DP.dp.toPx()
+                    val r = maxOf(overlay.value, backgroundBlur()).coerceIn(0f, 1f) * MAX_CONTENT_BLUR_DP.dp.toPx()
                     renderEffect = if (r > 0.5f) BlurEffect(r, r, TileMode.Decal) else null
                 }
                 .pointerInput(Unit) { detectTapGestures(onLongPress = { homeMenu(it) }) }
+                .pointerInput(Unit) {
+                    // Swipe up anywhere on home opens the drawer (horizontal drags stay with the pager).
+                    val trigger = SWIPE_UP_DP.dp.toPx()
+                    var travel = 0f
+                    var fired = false
+                    detectVerticalDragGestures(onDragStart = { travel = 0f; fired = false }) { change, dy ->
+                        travel += dy
+                        if (!fired && travel < -trigger) {
+                            fired = true
+                            change.consume()
+                            openDrawer(false)
+                        }
+                    }
+                }
                 .statusBarsPadding()
                 .navigationBarsPadding(),
         ) {
@@ -161,7 +185,7 @@ fun HomeScreen(
             }
             PageIndicator(pager, Modifier.align(Alignment.CenterHorizontally))
             Spacer(Modifier.height(14.dp))
-            SearchPill(Modifier.padding(horizontal = SIDE))
+            SearchPill(Modifier.padding(horizontal = SIDE)) { openDrawer(true) }
             Spacer(Modifier.height(14.dp))
             Dock(state.dock, Modifier.padding(horizontal = SIDE), onLaunch = ::launch, onAppMenu = ::appMenu)
             Spacer(Modifier.height(Space.s3))
@@ -285,12 +309,13 @@ private fun PageIndicator(pager: PagerState, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun SearchPill(modifier: Modifier = Modifier) {
+private fun SearchPill(modifier: Modifier = Modifier, onClick: () -> Unit) {
     val colors = Saber.colors
     GlassSurface(
-        modifier.fillMaxWidth().height(48.dp),
+        modifier.fillMaxWidth().height(48.dp).semantics { contentDescription = "Search apps, contacts and web" },
         shape = GlassShape.Pill,
         material = GlassMaterial.Regular,
+        onClick = onClick,
     ) {
         Row(
             Modifier.fillMaxSize().padding(horizontal = Space.s4),

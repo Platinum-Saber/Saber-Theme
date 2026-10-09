@@ -133,6 +133,33 @@ object HomeLayoutPolicy {
             .updatePage(toPage) { page -> page.copy(items = page.items + moved) }
     }
 
+    /**
+     * Removes app [key] from the dock, the pages and any folder; a folder left
+     * with one app becomes that app in the same slot.
+     */
+    fun removeApp(layout: HomeLayout, key: AppKey): HomeLayout = HomeLayout(
+        dock = layout.dock - key,
+        pages = layout.pages.map { page ->
+            HomePage(
+                page.items.mapNotNull { placed ->
+                    when (val item = placed.item) {
+                        is HomeItem.App -> placed.takeIf { item.key != key }
+                        is HomeItem.Folder -> {
+                            val apps = item.apps - key
+                            when (apps.size) {
+                                item.apps.size -> placed
+                                0 -> null
+                                1 -> placed.copy(item = HomeItem.App(apps.single()))
+                                else -> placed.copy(item = item.copy(apps = apps))
+                            }
+                        }
+                        is HomeItem.Widget -> placed
+                    }
+                },
+            )
+        },
+    )
+
     /** Removes the item with [itemId] from every page (not the dock). */
     fun remove(layout: HomeLayout, itemId: String): HomeLayout =
         layout.copy(pages = layout.pages.map { page -> page.copy(items = page.items.filter { it.item.id != itemId }) })

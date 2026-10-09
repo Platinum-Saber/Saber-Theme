@@ -25,6 +25,7 @@ include(
     ":core:designsystem",
     ":core:icons",
     ":core:ui",
+    ":feature:drawer",
     ":feature:home",
     ":feature:widgets",
 )

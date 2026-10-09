@@ -1,15 +1,18 @@
 package com.sabertheme.core.data
 
+import android.content.ActivityNotFoundException
 import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.ApplicationInfo
 import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
 import android.graphics.Rect
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Drawable
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -127,6 +130,25 @@ class AppRepository @Inject constructor(@ApplicationContext private val context:
     fun openAppInfo(key: AppKey, sourceBounds: Rect?) {
         val info = infos[key] ?: return
         launcherApps.startAppDetailsActivity(info.componentName, info.user, sourceBounds, null)
+    }
+
+    /** False for system apps (and unknown keys): those can only be disabled, from app info. */
+    fun canUninstall(key: AppKey): Boolean {
+        val info = infos[key] ?: return false
+        return info.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM == 0
+    }
+
+    /** System uninstall dialog for [key]'s package in its own profile. */
+    fun uninstall(key: AppKey) {
+        val info = infos[key] ?: return
+        val intent = Intent(Intent.ACTION_DELETE, Uri.fromParts("package", key.packageName, null))
+            .putExtra(Intent.EXTRA_USER, info.user)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        try {
+            context.startActivity(intent)
+        } catch (e: ActivityNotFoundException) {
+            Log.w(TAG, "No uninstaller for ${key.packageName}", e)
+        }
     }
 
     private companion object {

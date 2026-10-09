@@ -68,6 +68,7 @@ enum class UiGlyph(val drawable: Int) {
     PLUS(R.drawable.glyph_ui_plus),
     CHEVRON(R.drawable.glyph_ui_chevron),
     CLOSE(R.drawable.glyph_ui_close),
+    TRASH(R.drawable.glyph_ui_trash),
     BUDS(R.drawable.glyph_ui_buds),
     DEVICE(R.drawable.glyph_ui_device),
 }

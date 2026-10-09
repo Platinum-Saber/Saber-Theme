@@ -154,4 +154,26 @@ class HomeLayoutPolicyTest {
         val grown = HomeLayoutPolicy.makeFolder(folder, "folder:f1", HomeItem.App(key("c")).id, "unused")
         assertThat(grown.pages[0].items).containsExactly(Placed(HomeItem.Folder("f1", "Folder", listOf(key("a"), key("b"), key("c"))), 2, 3))
     }
+
+    @Test
+    fun removeAppClearsDockPagesAndFolders() {
+        val layout = HomeLayout(
+            dock = listOf(key("a"), key("b")),
+            pages = listOf(
+                HomePage(listOf(placedApp("a", 0, 0), Placed(HomeItem.Folder("f1", "F", listOf(key("a"), key("c"))), 1, 0))),
+                HomePage(listOf(Placed(HomeItem.Folder("f2", "G", listOf(key("a"), key("c"), key("d"))), 2, 2))),
+            ),
+        )
+        val removed = HomeLayoutPolicy.removeApp(layout, key("a"))
+        assertThat(removed.dock).containsExactly(key("b"))
+        assertThat(removed.pages[0].items).containsExactly(placedApp("c", 1, 0))
+        assertThat(removed.pages[1].items).containsExactly(Placed(HomeItem.Folder("f2", "G", listOf(key("c"), key("d"))), 2, 2))
+        assertThat(removed.allKeys()).doesNotContain(key("a"))
+    }
+
+    @Test
+    fun removeAppLeavesOtherUsersCopy() {
+        val layout = HomeLayout(emptyList(), listOf(HomePage(listOf(placedApp("a", 0, 0), placedApp("a", 1, 0, user = 10)))))
+        assertThat(HomeLayoutPolicy.removeApp(layout, key("a")).pages[0].items).containsExactly(placedApp("a", 1, 0, user = 10))
+    }
 }

@@ -41,7 +41,8 @@ import com.sabertheme.core.designsystem.theme.Radius
 import com.sabertheme.core.designsystem.theme.Saber
 import com.sabertheme.core.designsystem.theme.Space
 
-data class MenuItem(val glyph: Int, val label: String, val enabled: Boolean = true, val onClick: () -> Unit)
+/** [badge] is trailing text, e.g. "Soon" on a disabled item. */
+data class MenuItem(val glyph: Int, val label: String, val enabled: Boolean = true, val badge: String? = null, val onClick: () -> Unit)
 
 data class MenuRequest(val anchor: Offset, val items: List<MenuItem>)
 
@@ -124,6 +125,6 @@ private fun MenuRow(item: MenuItem, dismiss: () -> Unit) {
         Image(painterResource(item.glyph), null, Modifier.size(20.dp), colorFilter = ColorFilter.tint(tint))
         Spacer(Modifier.width(Space.s3))
         BasicText(item.label, Modifier.weight(1f), style = Saber.type.body.copy(color = tint))
-        if (!item.enabled) BasicText("Soon", style = Saber.type.captionIcon.copy(color = colors.textTertiary))
+        item.badge?.let { BasicText(it, style = Saber.type.captionIcon.copy(color = colors.textTertiary)) }
     }
 }
