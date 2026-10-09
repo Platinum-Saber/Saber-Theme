@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Mirrors DarkSaberColors in core/designsystem/.../theme/Color.kt. -->
+<resources>
+    <color name="glance_fill">#B31A1C22</color>
+    <color name="glance_border">#3DFFFFFF</color>
+    <color name="glance_text_primary">#FFF5F6F8</color>
+    <color name="glance_text_secondary">#B3F5F6F8</color>
+    <color name="glance_accent">#FF8EA6FF</color>
+</resources>

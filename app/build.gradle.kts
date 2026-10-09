@@ -39,6 +39,7 @@ dependencies {
     implementation(projects.feature.home)
     implementation(projects.feature.settings)
     implementation(projects.feature.widgets)
+    implementation(projects.widgetsGlance)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

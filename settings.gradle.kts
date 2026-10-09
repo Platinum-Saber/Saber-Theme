@@ -30,4 +30,5 @@ include(
     ":feature:home",
     ":feature:settings",
     ":feature:widgets",
+    ":widgets-glance",
 )

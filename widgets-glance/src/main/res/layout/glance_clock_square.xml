@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Clock 2x2: hour over accent minutes, then the short date. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_horizontal"
+    android:orientation="vertical">
+
+    <TextClock
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="sans-serif-light"
+        android:format12Hour="hh"
+        android:format24Hour="HH"
+        android:includeFontPadding="false"
+        android:textColor="@color/glance_text_primary"
+        android:textSize="44sp" />
+
+    <TextClock
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="sans-serif-light"
+        android:format12Hour="mm"
+        android:format24Hour="mm"
+        android:includeFontPadding="false"
+        android:textColor="@color/glance_accent"
+        android:textSize="44sp" />
+
+    <TextClock
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:fontFamily="sans-serif-medium"
+        android:format12Hour="EEE d MMM"
+        android:format24Hour="EEE d MMM"
+        android:textColor="@color/glance_text_secondary"
+        android:textSize="13sp" />
+</LinearLayout>

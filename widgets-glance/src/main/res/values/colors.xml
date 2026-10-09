@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Glance (RemoteViews) cannot blur, so glass maps to a translucent fill and a 1 dp border.
+     Mirrors LightSaberColors in core/designsystem/.../theme/Color.kt; change both together. -->
+<resources>
+    <color name="glance_fill">#99FFFFFF</color>
+    <color name="glance_border">#B3FFFFFF</color>
+    <color name="glance_text_primary">#FF0E0F12</color>
+    <color name="glance_text_secondary">#A60E0F12</color>
+    <color name="glance_accent">#FF5B7CFA</color>
+</resources>

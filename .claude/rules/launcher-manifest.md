@@ -29,3 +29,9 @@ paths:
   return sessions. Keep it `exported="true"` with
   `BIND_NOTIFICATION_LISTENER_SERVICE`, and never add notification reading
   without a product decision.
+- Exported widgets (`:widgets-glance`): one `GlanceAppWidgetReceiver` per
+  widget (`exported="true"`, `APPWIDGET_UPDATE`, provider XML with
+  `initialLayout="@layout/glance_default_loading_layout"`), plus
+  `WidgetUpdateReceiver` (`exported="false"`) for exempt implicit
+  broadcasts only (TIME_SET, TIMEZONE_CHANGED, LOCALE_CHANGED,
+  NEXT_ALARM_CLOCK_CHANGED); it checks the action before acting.

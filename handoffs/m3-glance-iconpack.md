@@ -20,6 +20,7 @@
 - `.claude/rules/launcher-manifest.md`, `.claude/rules/glass-rendering.md` — manifest/permission and glass rules.
 
 ## State
+- M3 step 2 done: `:widgets-glance` (Glance 1.2.0, WorkManager 2.12.0 in the catalog) with `GlanceSupport.kt` (`WidgetDataEntryPoint`, `GlanceTokens` from `LightSaberColors`/`DarkSaberColors`, `GlanceFrame` card drawables `glance_frame_24/28`, responsive `currentLayout()`), `ClockGlanceWidget` (TextClock layouts via `AndroidRemoteViews` + alarm line), `WidgetUpdateReceiver` + `SaberGlanceWidgets.updateAll`. Verified in One UI Home at 4x2, 4x1 and 2x2 (clock ticks without wakeups). Glance gotchas: `ColorProvider(resId)` is RestrictedApi in 1.2 (use the day/night `androidx.glance.color.ColorProvider`); `AndroidRemoteViews` fills the height unless given `wrapContentHeight()`. A test Saber Clock is still on One UI Home's first page (user removes it after step 3).
 - M3 step 1 done: `:core:widgetdata` extracted; home widgets verified unchanged on the S23. `MediaListenerService` moved package, so any notification access granted to the old component would need re-granting (none was granted).
 - Lawnchair 15 Beta 3 installed on the S23 over adb (checksum matched GitHub's release asset; Play Protect blocks browser sideloads of it). Saber stays the HOME role holder.
 - `main` = `origin/main`, all M2 steps committed. Debug build on the S23 (holds HOME). The user's layout and settings were restored after on-device tests (memory `device-layout-backup` has the procedure).
@@ -28,4 +29,4 @@
 - Known rough edges: dock items don't shift to open a gap while dragging (outline only); locked-profile slots look empty and refuse drops; white "Done" text on the light accent pill is low contrast; `AppRepository.installed` is a cold flow collected separately by home and drawer (two LauncherApps callbacks).
 
 ## Next step
-M3 step 2 (`docs/plans/m3-glance-iconpack.md`): `:widgets-glance` foundation (catalog: glance-appwidget + work-runtime-ktx; `GlanceTokens`, `GlanceFrame`, Hilt `@EntryPoint`, `WidgetUpdateReceiver`) + `ClockGlanceWidget` with `TextClock` via `AndroidRemoteViews`; verify by starting One UI Home explicitly and having the user add the widget.
+M3 step 3 (`docs/plans/m3-glance-iconpack.md`): Weather, Calendar, Battery, Next alarm Glance widgets (mirror `WidgetViews.kt` per size), `WidgetRefreshWorker` (30 min, weather refresh via a new `WeatherSource.refresh()`, then `SaberGlanceWidgets.updateAll`), `GlancePermissionActivity`, tap actions, generated previews (`providePreview`, Glance 1.2). Test again by starting One UI Home explicitly.
