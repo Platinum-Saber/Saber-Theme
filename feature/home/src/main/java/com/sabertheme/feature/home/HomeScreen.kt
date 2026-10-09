@@ -60,6 +60,7 @@ import com.sabertheme.core.icons.AppGlyph
 import com.sabertheme.core.icons.UiGlyph
 import com.sabertheme.core.model.HomeItem
 import com.sabertheme.core.model.HomeLayout
+import com.sabertheme.core.model.WidgetSize
 import com.sabertheme.core.ui.AppTile
 import com.sabertheme.core.ui.CELL_HEIGHT
 import com.sabertheme.core.ui.CELL_WIDTH
@@ -89,7 +90,7 @@ fun HomeScreen(
     state: HomeUiState,
     viewModel: HomeViewModel,
     onOpenOptions: () -> Unit,
-    widgetContent: @Composable (HomeItem.Widget, Modifier) -> Unit = { widget, modifier -> WidgetPlaceholder(widget, modifier) },
+    widgetContent: @Composable (HomeItem.Widget, WidgetSize, Modifier) -> Unit = { widget, _, modifier -> WidgetPlaceholder(widget, modifier) },
 ) {
     val env = LocalGlassEnvironment.current
     val view = LocalView.current
@@ -174,7 +175,7 @@ fun HomeScreen(
 private fun HomePage(
     cells: List<PlacedCell>,
     velocity: () -> Float,
-    widgetContent: @Composable (HomeItem.Widget, Modifier) -> Unit,
+    widgetContent: @Composable (HomeItem.Widget, WidgetSize, Modifier) -> Unit,
     onLaunch: (LauncherApp, Rect) -> Unit,
     onAppMenu: (LauncherApp, Rect, Offset) -> Unit,
     onOpenFolder: (HomeCell.Folder, Rect) -> Unit,
@@ -192,7 +193,7 @@ private fun HomePage(
                             tileModifier = stretch,
                         )
                         is HomeCell.Folder -> FolderIcon(cell.name, cell.apps, onOpen = { onOpenFolder(cell, it) }, tileModifier = stretch)
-                        is HomeCell.Widget -> widgetContent(cell.widget, stretch)
+                        is HomeCell.Widget -> widgetContent(cell.widget, WidgetSize(placed.spanX, placed.spanY), stretch)
                     }
                 }
             }

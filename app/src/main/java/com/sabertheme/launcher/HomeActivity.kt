@@ -28,13 +28,18 @@ import com.sabertheme.core.designsystem.theme.SaberTheme
 import com.sabertheme.feature.home.HomeOptionsSheet
 import com.sabertheme.feature.home.HomeScreen
 import com.sabertheme.feature.home.HomeViewModel
+import com.sabertheme.feature.widgets.WidgetHost
+import com.sabertheme.feature.widgets.WidgetSources
 import com.sabertheme.launcher.debug.FrameStatsOverlay
 import com.sabertheme.launcher.debug.GlassLab
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class HomeActivity : ComponentActivity() {
     private val viewModel: HomeViewModel by viewModels()
+
+    @Inject lateinit var widgets: WidgetSources
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -58,7 +63,12 @@ class HomeActivity : ComponentActivity() {
                 SaberTheme(dark = env.backdrop?.dark ?: true) {
                     Box(Modifier.fillMaxSize().glassInteractionTracker(env)) {
                         if (home != null) {
-                            HomeScreen(home, viewModel, onOpenOptions = { optionsOpen = true })
+                            HomeScreen(
+                                home,
+                                viewModel,
+                                onOpenOptions = { optionsOpen = true },
+                                widgetContent = { widget, size, modifier -> WidgetHost(widgets, widget, size, modifier) },
+                            )
                         } else {
                             WallpaperLayer()
                         }
@@ -78,5 +88,11 @@ class HomeActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Permission or notification-access changes made in Settings.
+        widgets.permissions.recheck()
     }
 }

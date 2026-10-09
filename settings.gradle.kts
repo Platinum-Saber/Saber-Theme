@@ -26,4 +26,5 @@ include(
     ":core:icons",
     ":core:ui",
     ":feature:home",
+    ":feature:widgets",
 )

@@ -35,6 +35,7 @@ dependencies {
     implementation(projects.core.icons)
     implementation(projects.core.ui)
     implementation(projects.feature.home)
+    implementation(projects.feature.widgets)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
