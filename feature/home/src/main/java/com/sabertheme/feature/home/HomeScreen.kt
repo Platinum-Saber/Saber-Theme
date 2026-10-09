@@ -25,6 +25,7 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -40,8 +41,11 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.sabertheme.core.designsystem.glass.GlassMotion
 import com.sabertheme.core.designsystem.glass.GlassShape
@@ -55,18 +59,20 @@ import com.sabertheme.core.designsystem.theme.Saber
 import com.sabertheme.core.designsystem.theme.Space
 import com.sabertheme.core.icons.AppGlyph
 import com.sabertheme.core.icons.UiGlyph
+import com.sabertheme.core.model.HomeItem
 import com.sabertheme.core.model.HomeLayout
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import android.graphics.Rect as AndroidRect
 
 private val SIDE = 18.dp
+private val WIDGET_GAP = 12.dp
 /** Wallpaper drift per page, as a share of the overscan. */
 private const val PAGE_PARALLAX = 0.45f
 private const val MAX_CONTENT_BLUR_DP = 18f
 
 /**
- * Home: pages of apps and folders over the launcher's own wallpaper, with
+ * Home: pages of widgets, apps and folders over the launcher's own wallpaper, with
  * page indicator, search pill and dock. Long-press empty space for the home
  * menu, an icon for its app menu.
  */
@@ -75,6 +81,7 @@ fun HomeScreen(
     state: HomeUiState,
     viewModel: HomeViewModel,
     onOpenOptions: () -> Unit,
+    widgetContent: @Composable (HomeItem.Widget, Modifier) -> Unit = { widget, modifier -> WidgetPlaceholder(widget, modifier) },
 ) {
     val env = LocalGlassEnvironment.current
     val view = LocalView.current
@@ -139,6 +146,7 @@ fun HomeScreen(
                 HomePage(
                     cells = state.pages.getOrElse(index) { emptyList() },
                     velocity = { pageVelocity.value },
+                    widgetContent = widgetContent,
                     onLaunch = ::launch,
                     onAppMenu = ::appMenu,
                     onOpenFolder = { folder, bounds -> openFolder = OpenFolder(folder, bounds) },
@@ -158,18 +166,19 @@ fun HomeScreen(
 
 @Composable
 private fun HomePage(
-    cells: List<HomeCell>,
+    cells: List<PlacedCell>,
     velocity: () -> Float,
+    widgetContent: @Composable (HomeItem.Widget, Modifier) -> Unit,
     onLaunch: (HomeApp, Rect) -> Unit,
     onAppMenu: (HomeApp, Rect, Offset) -> Unit,
     onOpenFolder: (HomeCell.Folder, Rect) -> Unit,
 ) {
     val stretch = Modifier.glassStretch { Offset(velocity(), 0f) }
-    Column(Modifier.fillMaxSize().padding(horizontal = SIDE).padding(top = Space.s2)) {
-        cells.chunked(HomeLayout.COLUMNS).forEach { row ->
-            Row(Modifier.fillMaxWidth().height(CELL_HEIGHT), horizontalArrangement = Arrangement.SpaceBetween) {
-                row.forEach { cell ->
-                    when (cell) {
+    Layout(
+        content = {
+            cells.forEach { placed ->
+                key(placed.id) {
+                    when (val cell = placed.cell) {
                         is HomeCell.App -> HomeAppIcon(
                             cell.app,
                             onClick = { onLaunch(cell.app, it) },
@@ -177,11 +186,69 @@ private fun HomePage(
                             tileModifier = stretch,
                         )
                         is HomeCell.Folder -> FolderIcon(cell, onOpen = { onOpenFolder(cell, it) }, tileModifier = stretch)
+                        is HomeCell.Widget -> widgetContent(cell.widget, stretch)
                     }
                 }
-                repeat(HomeLayout.COLUMNS - row.size) { Spacer(Modifier.width(CELL_WIDTH)) }
+            }
+        },
+        modifier = Modifier.fillMaxSize().padding(horizontal = SIDE).padding(top = Space.s2),
+    ) { measurables, constraints ->
+        val grid = HomeGrid(constraints.maxWidth.toFloat(), this)
+        val placeables = measurables.mapIndexed { i, m ->
+            val c = cells[i]
+            if (c.cell is HomeCell.Widget) {
+                val r = grid.widgetRect(c)
+                m.measure(Constraints.fixed(r.width.roundToInt(), r.height.roundToInt()))
+            } else {
+                m.measure(Constraints(maxWidth = CELL_WIDTH.roundToPx(), maxHeight = CELL_HEIGHT.roundToPx()))
             }
         }
+        layout(constraints.maxWidth, constraints.maxHeight) {
+            placeables.forEachIndexed { i, p ->
+                val c = cells[i]
+                if (c.cell is HomeCell.Widget) {
+                    val r = grid.widgetRect(c)
+                    p.place(r.left.roundToInt(), r.top.roundToInt())
+                } else {
+                    p.place(grid.cellX(c.col).roundToInt(), (c.row * CELL_HEIGHT.toPx()).roundToInt())
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Grid geometry for a page of [width] px. App cells are [CELL_WIDTH] wide and
+ * spread edge to edge; widgets align with the outer edges of the icon tiles
+ * and are separated by [WIDGET_GAP] both ways.
+ */
+private class HomeGrid(private val width: Float, density: Density) {
+    private val cell = with(density) { CELL_WIDTH.toPx() }
+    private val rowH = with(density) { CELL_HEIGHT.toPx() }
+    private val inset = with(density) { ((CELL_WIDTH - TILE_SIZE) / 2).toPx() }
+    private val gap = with(density) { WIDGET_GAP.toPx() }
+    private val top = with(density) { 2.dp.toPx() }
+
+    fun cellX(col: Int) = col * (width - cell) / (HomeLayout.COLUMNS - 1)
+
+    fun widgetRect(c: PlacedCell): Rect {
+        val inner = width - 2 * inset
+        val unit = (inner - gap * (HomeLayout.COLUMNS - 1)) / HomeLayout.COLUMNS
+        val left = inset + c.col * (unit + gap)
+        val y = c.row * rowH + top
+        return Rect(left, y, left + c.spanX * unit + (c.spanX - 1) * gap, y + c.spanY * rowH - gap)
+    }
+}
+
+/** Stand-in until the widgets module provides real content. */
+@Composable
+private fun WidgetPlaceholder(widget: HomeItem.Widget, modifier: Modifier) {
+    GlassSurface(modifier, shape = GlassShape.Rounded(Radius.lg), material = GlassMaterial.Regular) {
+        BasicText(
+            widget.type.name,
+            Modifier.align(Alignment.Center),
+            style = Saber.type.body.copy(color = Saber.colors.textSecondary),
+        )
     }
 }
 

@@ -52,11 +52,15 @@ class HomeViewModel @Inject constructor(
             HomeUiState(
                 dock = home.layout.dock.mapNotNull { app(it) },
                 pages = home.layout.pages.map { page ->
-                    page.mapNotNull { item ->
-                        when (item) {
+                    page.items.mapNotNull { placed ->
+                        // Apps of a locked profile keep their slot but have no entry to draw yet.
+                        val cell = when (val item = placed.item) {
                             is HomeItem.App -> app(item.key)?.let(HomeCell::App)
-                            is HomeItem.Folder -> HomeCell.Folder(item.id, item.name, item.apps.mapNotNull { app(it) })
-                        }
+                            is HomeItem.Folder -> HomeCell.Folder(item.folderId, item.name, item.apps.mapNotNull { app(it) })
+                                .takeIf { it.apps.isNotEmpty() }
+                            is HomeItem.Widget -> HomeCell.Widget(item)
+                        } ?: return@mapNotNull null
+                        PlacedCell(cell, placed.col, placed.row, placed.spanX, placed.spanY, placed.item.id)
                     }
                 },
             )

@@ -1,7 +1,10 @@
 package com.sabertheme.core.data
 
+import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
 import android.graphics.Rect
@@ -22,6 +25,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
@@ -38,9 +42,19 @@ class AppRepository @Inject constructor(@ApplicationContext private val context:
     private val userManager = context.getSystemService(UserManager::class.java)
     private val infos = ConcurrentHashMap<AppKey, LauncherActivityInfo>()
 
-    val apps: Flow<List<AppEntry>> = callbackFlow {
+    /**
+     * Apps plus the serials of profiles that are present but locked or paused
+     * (work profile off, Secure Folder locked): their apps may be missing
+     * from the list without having been uninstalled.
+     */
+    data class Installed(val apps: List<AppEntry>, val lockedProfiles: Set<Long>)
+
+    val installed: Flow<Installed> = callbackFlow {
         fun publish() {
             trySend(query())
+        }
+        val profileReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) = publish()
         }
         val callback = object : LauncherApps.Callback() {
             override fun onPackageRemoved(packageName: String, user: UserHandle) = publish()
@@ -51,21 +65,31 @@ class AppRepository @Inject constructor(@ApplicationContext private val context:
             override fun onPackagesSuspended(packageNames: Array<out String>, user: UserHandle) = publish()
             override fun onPackagesUnsuspended(packageNames: Array<out String>, user: UserHandle) = publish()
         }
-        launcherApps.registerCallback(callback, Handler(Looper.getMainLooper()))
+        val main = Handler(Looper.getMainLooper())
+        launcherApps.registerCallback(callback, main)
+        context.registerReceiver(profileReceiver, PROFILE_EVENTS, null, main, Context.RECEIVER_NOT_EXPORTED)
         publish()
-        awaitClose { launcherApps.unregisterCallback(callback) }
+        awaitClose {
+            launcherApps.unregisterCallback(callback)
+            context.unregisterReceiver(profileReceiver)
+        }
     }.conflate().flowOn(Dispatchers.Default)
 
-    private fun query(): List<AppEntry> {
+    val apps: Flow<List<AppEntry>> = installed.map { it.apps }
+
+    private fun query(): Installed {
         val self = context.packageName
         val result = mutableListOf<AppEntry>()
         val seen = HashSet<AppKey>()
+        val locked = HashSet<Long>()
         for (user in launcherApps.profiles) {
             val serial = userManager.getSerialNumberForUser(user)
+            if (userManager.isQuietModeEnabled(user) || !userManager.isUserUnlocked(user)) locked += serial
             val list = try {
                 launcherApps.getActivityList(null, user)
             } catch (e: SecurityException) {
                 Log.w(TAG, "Profile $serial not readable", e)
+                locked += serial
                 continue
             }
             for (info in list) {
@@ -79,7 +103,7 @@ class AppRepository @Inject constructor(@ApplicationContext private val context:
             }
         }
         infos.keys.retainAll(seen)
-        return result
+        return Installed(result, locked)
     }
 
     /** The adaptive icon's monochrome layer, if the app ships one. */
@@ -107,5 +131,13 @@ class AppRepository @Inject constructor(@ApplicationContext private val context:
 
     private companion object {
         const val TAG = "AppRepository"
+
+        val PROFILE_EVENTS = IntentFilter().apply {
+            addAction(Intent.ACTION_MANAGED_PROFILE_AVAILABLE)
+            addAction(Intent.ACTION_MANAGED_PROFILE_UNAVAILABLE)
+            addAction(Intent.ACTION_MANAGED_PROFILE_UNLOCKED)
+            addAction(Intent.ACTION_PROFILE_ACCESSIBLE)
+            addAction(Intent.ACTION_PROFILE_INACCESSIBLE)
+        }
     }
 }

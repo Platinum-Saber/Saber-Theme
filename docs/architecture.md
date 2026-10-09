@@ -42,7 +42,7 @@ graph TD
 |---|---|
 | `:app` | `HomeActivity` (MAIN/HOME, `singleTask`), nav host, Hilt root, wiring |
 | `:core:designsystem` | Tokens, `GlassSurface`, typography, AGSL shaders, theme |
-| `:core:model` | Pure Kotlin: `AppEntry`, `HomeLayout`, `WidgetSpec`, `IconMapping` |
+| `:core:model` | Pure Kotlin: `AppEntry`, `HomeLayout` (`HomePage`, `Placed`, `HomeItem`, `WidgetType`), policy, codec |
 | `:core:data` | DataStore (layout, prefs), `AppRepository` (LauncherApps), wallpaper store |
 | `:core:icons` | Vector glyphs, `ComponentName` → glyph map, monochrome fallback |
 | `:feature:home` | Pager, grid, dock, edit mode, folders |
@@ -64,13 +64,22 @@ layer of `:feature:widgets`; if that grows, move the sources to
   the launcher, so no state lives only in memory.
   - `SettingsRepository`: glass intensity and `WallpaperChoice`
     (`Bundled(id)` | `Photo(fileName)`).
-  - `LayoutRepository`: `HomeLayout` (dock + pages of apps and folders) in
-    the line-based `HomeLayoutCodec` format.
+  - `LayoutRepository`: `HomeLayout(dock, pages: List<HomePage>)`, each
+    page a list of `Placed(item, col, row, spanX, spanY)` with
+    `HomeItem.App | Folder | Widget(widgetId, WidgetType, config)`, in the
+    line-based `HomeLayoutCodec` v2 format. v1 (M1) layouts migrate on read:
+    dock kept, first page placed in reading order, default widget page
+    prepended, later pages dropped (those apps live in the drawer).
   - `WallpaperStore`: imported photos copied to `filesDir/wallpapers` as
     WebP (long edge <= 3072 px); the picker grant is temporary.
-- `HomeLayoutPolicy` (pure Kotlin, tested) builds the first-run layout
-  (dock from phone/messages/browser/camera glyphs, a Social folder, the
-  rest A–Z) and reconciles it with installs and uninstalls.
+- `HomeLayoutPolicy` (pure Kotlin, tested) builds the curated first-run
+  layout: dock from phone/messages/browser/camera glyphs; page 1 widgets
+  (Clock 4x2, Weather 2x2, Calendar 2x2, Battery 2x1, Alarm 2x1; Media is
+  picker-only since it needs listener access); page 2 a Social folder + up
+  to 15 apps from `USEFUL_GLYPHS`. `reconcile` only removes uninstalled
+  apps (never appends, never adds or removes pages) and keeps apps of
+  locked/paused profiles (`AppRepository.Installed.lockedProfiles`). Edit
+  helpers: `firstFreeSpot`, `add`, `move`, `remove`, `makeFolder`.
 - Apps: `LauncherApps` + `LauncherApps.Callback` → `AppRepository`, so work
   profile and Secure Folder apps appear (see `.claude/rules/launcher-manifest.md`).
 
@@ -116,7 +125,9 @@ The main technical risk; constraints live in `.claude/rules/glass-rendering.md`.
      20 cells, ~350 µs each, spread across Compose node draw). Keeping
      neighbours composed (`beyondViewportPageCount = 1`) made it worse
      (1.9%): the spike moves to mid-swipe and off-screen glass re-records.
-     Re-measure on the 2-page curated home (step 2) and with widgets (step 4).
+     Step 2 (2-page curated home, placeholder widgets): jank 0.2–0.3%,
+     p90 6 ms; most of the 12 swipes now hit the edge. Re-check with real
+     widgets (step 4).
    - The `benchmark` build is profileable and not obfuscated
      (`app/src/benchmark`, `benchmark-rules.pro`) for `simpleperf --app`.
 6. Glance fallback maps the same tokens to a translucent tinted rounded
@@ -159,24 +170,26 @@ GlassEnvironment (CompositionLocal, HomeActivity root)
 Overlays (open folder) blur the home content with a layer `BlurEffect`
 only while visible; glass itself never blurs live.
 
-## Home (M1)
-- `HomeScreen`: pager of 4x5 grids (72 dp cells, 56 dp Thin tiles, 18 dp
-  margin), morphing page indicator, search pill (visual only until M2),
-  Thick dock of four apps.
+## Home
+- `HomeScreen`: pager of positioned 4x5 grids (72 dp app cells spread edge
+  to edge, 56 dp Thin tiles, 18 dp margin; widgets align with the tiles'
+  outer edges with 12 dp gaps), morphing page indicator, search pill
+  (visual only until the drawer), Thick dock of four apps. Widgets render
+  through the `widgetContent` slot (placeholder until `:feature:widgets`).
 - Long-press empty space: menu with Wallpaper & style / Launcher settings
   (open `HomeOptionsSheet`: wallpapers, photo import, intensity, Glass Lab);
   Edit home screen and Widgets are M2. Long-press an app: App info.
 - Launch: `LauncherApps.startMainActivity` with a clip-reveal from the
   icon's window bounds.
-- Until the drawer exists every app lives on a home page.
-- Known gap: apps of a locked work profile or Secure Folder drop out of the
-  layout and return at the end when it unlocks.
+- Home is curated; every app lives in the drawer (M2 step 5). Apps of a
+  locked profile keep their slot and are hidden until it unlocks.
 
 ## Widget system
 - `WidgetDataSource<T>` exposes `Flow<WidgetState<T>>` (Loading, Ready,
   NeedsPermission, Error).
 - Sizes on the cell grid: 2×1, 2×2, 4×1, 4×2.
-  `WidgetSpec(type, size, position, config)` is stored in the layout.
+  `HomeItem.Widget` + its `Placed` span is stored in the layout;
+  `WidgetType.sizes` lists the allowed sizes (first = default).
 
 | Widget | Source | Permission / access |
 |---|---|---|
