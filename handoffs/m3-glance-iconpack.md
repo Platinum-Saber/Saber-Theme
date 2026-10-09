@@ -1,35 +1,39 @@
 # Handoff: Milestone 3 — Glance widgets + icon-pack APK
 
-**Goal:** Build M3 per `docs/plans/m3-glance-iconpack.md` (approved): the native widgets exported as Glance AppWidgets for other launchers (`:widgets-glance`), and a standalone ADW/Nova icon-pack APK (`:iconpack`) built from the same glyphs. M2 (in-launcher experience) is complete.
+**Goal:** Build M3 per `docs/plans/m3-glance-iconpack.md` (approved): Saber's widgets exported as Glance AppWidgets for other launchers (`:widgets-glance`) and a standalone ADW/Nova icon-pack APK (`:iconpack`). Steps 1–3 are done; continue at step 4 (icon pack), then step 5 (docs + wrap-up).
 
-## Decisions carried over
-- Glance cannot blur: map the glass tokens to a translucent tint + 1 px border (`.claude/rules/glass-rendering.md`; Figma "Widgets" board already has `Render=Glance` variants of every widget).
-- `:widgets-glance` reuses the widget data layer. `docs/architecture.md` says: if that coupling grows, move the sources to `:core:widgetdata`. Today the sources (`ClockSource`, `CalendarSource`, `WeatherSource`, …, `WidgetPermissions`, `OpenMeteo`, `WidgetFormat`) live in `:feature:widgets` next to the in-launcher UI; the plan extracts them to `:core:widgetdata` in step 1.
-- Glance refresh: WorkManager plus broadcast triggers (time, battery, alarm changed); the in-launcher sources are `shareIn(WhileShown)` flows, which do not fit a background widget host as-is.
-- Icon pack: separate `applicationId`, `appfilter.xml` + `drawable.xml` generated from `design/icons/packages.json` and the `glyph_*` drawables (`node tools/build-icons.mjs` is the single generator; never edit generated files).
-- Process: plan mode first (more than ~3 files); commit and push after every step with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`; test on the real S23.
-- Perf work stays closed unless the user reopens it.
+## Decisions
+- User choices: Glance = Clock, Weather, Calendar, Battery, Next alarm (no Media); icon-pack components dumped from the S23 into `design/icons/components.json`; adaptive icons (opaque Glance-style background + glyph foreground + monochrome layer); icon pack verified in **Lawnchair 15 Beta 3** (Nova dropped, likely unmaintained).
+- Glance cannot blur: translucent fill + 1 dp border (`.claude/rules/glass-rendering.md`).
+- The widget data layer lives in `:core:widgetdata`, shared by `:feature:widgets` (in-launcher) and `:widgets-glance`.
+- Icons: `node tools/build-icons.mjs` stays the single glyph generator; the icon pack gets its own generator (`tools/build-iconpack.mjs`) reusing `tools/glyph-source.mjs`. Never edit generated files.
+- Process: commit and push after every step with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`; test on the real S23 over adb; Saber stays the default home (other launchers are started explicitly with `am start`). Perf work stays closed.
 
 ## Files
-- `docs/plans/m3-glance-iconpack.md` — approved M3 plan (steps 1–5, verification). User choices: Glance = Clock/Weather/Calendar/Battery/Alarm (no Media); components dumped from the S23; adaptive icons; icon pack checked in Lawnchair (user installs it; Nova dropped, likely unmaintained).
-- `docs/architecture.md` — current module graph (M3 modules shown dashed), widget system, icon system.
-- `core/widgetdata/src/main/java/com/sabertheme/core/widgetdata/` — sources, `WidgetState` + `snapshot()`, `WidgetPermissions`, `WidgetSources`, `OpenMeteo`, `WidgetFormat`, `MediaListenerService` (+ manifest permissions).
-- `feature/widgets/src/main/java/com/sabertheme/feature/widgets/` — in-launcher UI: `WidgetViews.kt` (per-size layouts to mirror in Glance), `WidgetHost`, `WidgetCatalog`, `WidgetPicker`.
-- `design/icons/glyphs.js`, `design/icons/packages.json`, `tools/build-icons.mjs` — icon source and generator.
-- `design/figma-plugin/src/code.js` — `WIDGETS` table and `Render=Glance` styling (`GLANCE_ALPHA`).
-- `.claude/rules/launcher-manifest.md`, `.claude/rules/glass-rendering.md` — manifest/permission and glass rules.
+- `docs/plans/m3-glance-iconpack.md`: approved plan (steps, verification).
+- `docs/architecture.md`: module graph and systems (Glance pipeline and icon pack get documented in step 5).
+- `core/widgetdata/.../widgetdata/`: sources, `WidgetState` + `snapshot()`, `WidgetPermissions`, `WidgetSources`, `WeatherSource.refresh()`, `OpenMeteo`, `WidgetFormat`, `MediaListenerService` (+ manifest permissions).
+- `widgets-glance/.../glance/`: `GlanceSupport.kt` (entry point, `SaberGlanceReceiver`, `GlanceTokens`, `GlanceFrame`, `GlanceStateFrame`, `openAction()`, `ringImage()`), one file per widget, `WidgetRefreshWorker.kt` (+ `SaberGlanceWidgets`: `updateAll`, `anyPlaced`, `onAppStart`, `publishPreviews`), `GlancePermissionActivity`, `WidgetUpdateReceiver`; res: card drawables, TextClock layouts, provider XMLs.
+- `app/.../SaberApp.kt`: calls `SaberGlanceWidgets.onAppStart` and publishes picker previews once per install.
+- `design/icons/glyphs.js`, `design/icons/packages.json` (glyph → package names), `tools/glyph-source.mjs` (`loadGlyphs`, `loadPackages`, `toPathData`, `resName`, `ROOT`), `tools/build-icons.mjs`.
+- `.claude/rules/launcher-manifest.md`: permissions, receivers, listener service (add the icon-pack filters in step 4/5).
 
 ## State
-- M3 step 3 done: Weather/Calendar/Battery/Alarm Glance widgets (`WeatherGlanceWidget.kt`, `CalendarGlanceWidget.kt`, `BatteryAlarmGlanceWidgets.kt`), `GlanceStateFrame` (loading/error/"Tap to allow"), `GlancePermissionActivity`, `WidgetRefreshWorker` + `SaberGlanceWidgets` (`updateAll`, `anyPlaced`, `onAppStart`, `publishPreviews`), `WeatherSource.refresh()`, `RefreshWeatherAction` (weather tap), `openAction()` for data-less tap intents, generated previews published from `SaberApp`. Verified in One UI Home: all five widgets at default sizes with live data, picker previews correct, taps open Clock alarms / battery usage / calendar chooser, revoke → "Tap to allow" → system dialog → events back.
-  - Limits: battery level/charging only update on the 15-min worker, app start or any widget redraw (no manifest broadcast exists); widgets keep their last drawing until Saber's process restarts after a permission change. Not verified: non-default sizes of Weather (4x1/4x2), Calendar (4x2), Battery/Alarm (2x2); the 15-min worker firing naturally; lint reports 2 warnings in `:widgets-glance` that weren't reviewed (lint report sits in `build/`, which tool permissions block).
-  - Test widgets removed by deleting their One UI Home page (One UI offers no per-widget Remove while it isn't the default home: no popup item, no drag target; edit-mode page trash works). Next time, test on a fresh page so it can be deleted.
-- M3 step 2 done: `:widgets-glance` (Glance 1.2.0, WorkManager 2.12.0 in the catalog) with `GlanceSupport.kt` (`WidgetDataEntryPoint`, `GlanceTokens` from `LightSaberColors`/`DarkSaberColors`, `GlanceFrame` card drawables `glance_frame_24/28`, responsive `currentLayout()`), `ClockGlanceWidget` (TextClock layouts via `AndroidRemoteViews` + alarm line), `WidgetUpdateReceiver` + `SaberGlanceWidgets.updateAll`. Verified in One UI Home at 4x2, 4x1 and 2x2 (clock ticks without wakeups). Glance gotchas: `ColorProvider(resId)` is RestrictedApi in 1.2 (use the day/night `androidx.glance.color.ColorProvider`); `AndroidRemoteViews` fills the height unless given `wrapContentHeight()`. A test Saber Clock is still on One UI Home's first page (user removes it after step 3).
-- M3 step 1 done: `:core:widgetdata` extracted; home widgets verified unchanged on the S23. `MediaListenerService` moved package, so any notification access granted to the old component would need re-granting (none was granted).
-- Lawnchair 15 Beta 3 installed on the S23 over adb (checksum matched GitHub's release asset; Play Protect blocks browser sideloads of it). Saber stays the HOME role holder.
-- `main` = `origin/main`, all M2 steps committed. Debug build on the S23 (holds HOME). The user's layout and settings were restored after on-device tests (memory `device-layout-backup` has the procedure).
-- Perf after widgets: jank 1.09%, p90 8 ms, p99 15 ms (benchmark build, 12 swipes). Reported only.
-- Not yet verified on device: edge-flip while dragging, contacts search (no `READ_CONTACTS`), Uninstall on a third-party app, Add/Remove home from menus, Suggested row, Media widget, `ROLE_HOME` request dialog, photo import from the settings page, locked-profile behaviour, fresh-install default layout.
-- Known rough edges: dock items don't shift to open a gap while dragging (outline only); locked-profile slots look empty and refuse drops; white "Done" text on the light accent pill is low contrast; `AppRepository.installed` is a cold flow collected separately by home and drawer (two LauncherApps callbacks).
+- `main` = `origin/main`, working tree clean. Debug build on the S23 (Saber holds HOME). Lawnchair 15 Beta 3 (`app.lawnchair`) installed over adb (checksum matched GitHub; Play Protect blocks browser sideloads of it).
+- Step 1: `:core:widgetdata` extracted, no behaviour change.
+- Step 2: `:widgets-glance` foundation + Saber Clock (TextClock via `AndroidRemoteViews`, so the host keeps time without wakeups).
+- Step 3: Weather, Calendar, Battery, Next alarm widgets; "Tap to allow" → `GlancePermissionActivity`; `WidgetRefreshWorker` (15 min, unique, self-cancels when no widget is placed); generated previews. Verified in One UI Home: all five at default sizes with live data, previews, taps, revoke → allow flow.
+- Glance gotchas found: `ColorProvider(resId)` is RestrictedApi in 1.2 (use day/night `androidx.glance.color.ColorProvider`); `AndroidRemoteViews` fills the height without `wrapContentHeight()`; Glance's `glance-action:` URI breaks data-less tap intents (SHOW_ALARMS, POWER_USAGE_SUMMARY), so `openAction()` makes them explicit (needs the `<queries>` entries); `setWidgetPreviews` needs API 35 (guarded).
+- Limits: battery level/charging only update on the worker, app start or another widget redraw; after a permission change widgets keep their last drawing until Saber's process restarts.
+- Not verified: Glance non-default sizes (Weather 4x1/4x2, Calendar 4x2, Battery/Alarm 2x2); the worker firing naturally; 2 lint warnings in `:widgets-glance` (unread: `build/` is blocked by tool permissions).
+- No Saber widgets are placed anywhere (the One UI test page was deleted: One UI has no per-widget Remove while it isn't the default home, so test on a fresh page and delete the page afterwards).
+- Carried from M2, still unverified on device: edge-flip while dragging, contacts search, Uninstall on a third-party app, Add/Remove home from menus, Suggested row, Media widget, `ROLE_HOME` dialog, photo import from settings, locked-profile behaviour, fresh-install layout. Rough edges: dock doesn't open a gap while dragging; locked-profile slots look empty; "Done" text contrast; `AppRepository.installed` collected twice. Perf after widgets: jank 1.09%, p90 8 ms.
+
+## Session gotchas
+- Bash: set `MSYS_NO_PATHCONV=1` before adb commands with device paths (`/data/...`, `/sdcard/...`), or Git Bash rewrites them.
+- Long or multiple heredocs in one Bash call fail with "unexpected EOF"; write files with the Write tool instead.
+- `adb` can drop when the cable reconnects; `adb kill-server`/`start-server`, then ask the user to re-allow USB debugging.
+- Back up and restore Saber's `settings.preferences_pb` before on-device edits of its layout or settings (memory `device-layout-backup`).
 
 ## Next step
-M3 step 4 (`docs/plans/m3-glance-iconpack.md`): `tools/dump-components.mjs` (adb launcher activities → `design/icons/components.json`), `tools/build-iconpack.mjs` (adaptive icons + monochrome, `appfilter.xml`, `drawable.xml`), `:iconpack` app module with icon-pack intent filters + appfilter unit test; verify in Lawnchair 15 Beta 3 (already installed; start it with `am start -n app.lawnchair/.LawnchairLauncher`).
+M3 step 4: `tools/dump-components.mjs` (adb `cmd package query-activities --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER` → components for packages in `packages.json` → merge into `design/icons/components.json`), `tools/build-iconpack.mjs` (adaptive icons with foreground glyph in the 108-unit canvas + `<monochrome>`, `res/xml/appfilter.xml` + `assets/appfilter.xml`, `res/xml/drawable.xml`), `:iconpack` app module (`com.sabertheme.iconpack`, icon-pack intent filters, small info activity) + an appfilter unit test. Verify: install `:iconpack`, start Lawnchair with `am start -n app.lawnchair/.LawnchairLauncher`, the user applies "Saber Icons" in Lawnchair settings, screenshot. Fallback if Lawnchair ignores vector/adaptive drawables: rasterise to PNG at build time.
