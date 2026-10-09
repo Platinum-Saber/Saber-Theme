@@ -19,12 +19,12 @@ paths:
 - Permissions are declared in the module that uses them (manifests merge),
   each with a comment saying which feature needs it:
   - `:app`: `VIBRATE`, `REQUEST_DELETE_PACKAGES` (Uninstall in the app menu).
-  - `:feature:widgets`: `INTERNET` + `ACCESS_COARSE_LOCATION` (weather,
+  - `:core:widgetdata`: `INTERNET` + `ACCESS_COARSE_LOCATION` (weather,
     coarse only), `READ_CALENDAR`.
   - `:feature:drawer`: `READ_CONTACTS` (search; asked from an inline row).
   Runtime permissions are only requested from a visible "Allow" control,
   never at startup.
-- `MediaListenerService` (`:feature:widgets`) is a `NotificationListenerService`
+- `MediaListenerService` (`:core:widgetdata`) is a `NotificationListenerService`
   that reads nothing; being enabled is what lets `MediaSessionManager`
   return sessions. Keep it `exported="true"` with
   `BIND_NOTIFICATION_LISTENER_SERVICE`, and never add notification reading

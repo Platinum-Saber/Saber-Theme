@@ -27,6 +27,9 @@ import com.sabertheme.core.designsystem.glass.WallpaperLayer
 import com.sabertheme.core.designsystem.glass.glassInteractionTracker
 import com.sabertheme.core.designsystem.glass.rememberGlassEnvironment
 import com.sabertheme.core.designsystem.theme.SaberTheme
+import com.sabertheme.core.ui.IconAppearance
+import com.sabertheme.core.ui.LocalIconAppearance
+import com.sabertheme.core.widgetdata.WidgetSources
 import com.sabertheme.feature.drawer.AppDrawer
 import com.sabertheme.feature.drawer.DrawerViewModel
 import com.sabertheme.feature.drawer.rememberDrawerState
@@ -35,11 +38,8 @@ import com.sabertheme.feature.home.HomeViewModel
 import com.sabertheme.feature.settings.SettingsScreen
 import com.sabertheme.feature.settings.SettingsViewModel
 import com.sabertheme.feature.settings.rememberSettingsState
-import com.sabertheme.core.ui.IconAppearance
-import com.sabertheme.core.ui.LocalIconAppearance
 import com.sabertheme.feature.widgets.WidgetHost
 import com.sabertheme.feature.widgets.WidgetPicker
-import com.sabertheme.feature.widgets.WidgetSources
 import com.sabertheme.launcher.debug.FrameStatsOverlay
 import com.sabertheme.launcher.debug.GlassLab
 import dagger.hilt.android.AndroidEntryPoint

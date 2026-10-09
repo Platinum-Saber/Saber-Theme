@@ -27,21 +27,12 @@ import com.sabertheme.core.designsystem.theme.Saber
 import com.sabertheme.core.model.HomeItem
 import com.sabertheme.core.model.WidgetSize
 import com.sabertheme.core.model.WidgetType
+import com.sabertheme.core.widgetdata.MediaListenerService
+import com.sabertheme.core.widgetdata.WidgetPermission
+import com.sabertheme.core.widgetdata.WidgetPermissions
+import com.sabertheme.core.widgetdata.WidgetSources
+import com.sabertheme.core.widgetdata.WidgetState
 import java.time.LocalDateTime
-import javax.inject.Inject
-import javax.inject.Singleton
-
-/** Every widget data source; `:app` injects this once and hands it to [WidgetHost]. */
-@Singleton
-class WidgetSources @Inject constructor(
-    val permissions: WidgetPermissions,
-    val clock: ClockSource,
-    val alarm: AlarmSource,
-    val battery: BatterySource,
-    val calendar: CalendarSource,
-    val weather: WeatherSource,
-    val media: MediaSource,
-)
 
 /** A live native widget of [size] cells; fills the bounds the home grid measured. */
 @Composable

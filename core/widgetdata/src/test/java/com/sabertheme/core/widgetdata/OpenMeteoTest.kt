@@ -1,4 +1,4 @@
-package com.sabertheme.feature.widgets
+package com.sabertheme.core.widgetdata
 
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test

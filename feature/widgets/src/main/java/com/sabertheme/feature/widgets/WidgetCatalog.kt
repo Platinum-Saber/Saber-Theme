@@ -4,6 +4,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.sabertheme.core.model.WidgetSize
 import com.sabertheme.core.model.WidgetType
+import com.sabertheme.core.widgetdata.AlarmData
+import com.sabertheme.core.widgetdata.BatteryData
+import com.sabertheme.core.widgetdata.CalendarData
+import com.sabertheme.core.widgetdata.CalendarEvent
+import com.sabertheme.core.widgetdata.ClockData
+import com.sabertheme.core.widgetdata.HourForecast
+import com.sabertheme.core.widgetdata.MediaData
+import com.sabertheme.core.widgetdata.WeatherCondition
+import com.sabertheme.core.widgetdata.WeatherData
+import com.sabertheme.core.widgetdata.WidgetPermission
 import java.time.LocalDateTime
 import java.time.ZoneId
 

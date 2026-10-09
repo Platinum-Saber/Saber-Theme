@@ -1,4 +1,4 @@
-package com.sabertheme.feature.widgets
+package com.sabertheme.core.widgetdata
 
 import android.content.BroadcastReceiver
 import android.content.Context

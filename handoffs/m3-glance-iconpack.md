@@ -13,16 +13,19 @@
 ## Files
 - `docs/plans/m3-glance-iconpack.md` — approved M3 plan (steps 1–5, verification). User choices: Glance = Clock/Weather/Calendar/Battery/Alarm (no Media); components dumped from the S23; adaptive icons; icon pack checked in Lawnchair (user installs it; Nova dropped, likely unmaintained).
 - `docs/architecture.md` — current module graph (M3 modules shown dashed), widget system, icon system.
-- `feature/widgets/src/main/java/com/sabertheme/feature/widgets/` — sources, `WidgetState`, `WidgetViews.kt` (per-size layouts to mirror in Glance), `WidgetCatalog`.
+- `core/widgetdata/src/main/java/com/sabertheme/core/widgetdata/` — sources, `WidgetState` + `snapshot()`, `WidgetPermissions`, `WidgetSources`, `OpenMeteo`, `WidgetFormat`, `MediaListenerService` (+ manifest permissions).
+- `feature/widgets/src/main/java/com/sabertheme/feature/widgets/` — in-launcher UI: `WidgetViews.kt` (per-size layouts to mirror in Glance), `WidgetHost`, `WidgetCatalog`, `WidgetPicker`.
 - `design/icons/glyphs.js`, `design/icons/packages.json`, `tools/build-icons.mjs` — icon source and generator.
 - `design/figma-plugin/src/code.js` — `WIDGETS` table and `Render=Glance` styling (`GLANCE_ALPHA`).
 - `.claude/rules/launcher-manifest.md`, `.claude/rules/glass-rendering.md` — manifest/permission and glass rules.
 
 ## State
+- M3 step 1 done: `:core:widgetdata` extracted; home widgets verified unchanged on the S23. `MediaListenerService` moved package, so any notification access granted to the old component would need re-granting (none was granted).
+- Lawnchair 15 Beta 3 installed on the S23 over adb (checksum matched GitHub's release asset; Play Protect blocks browser sideloads of it). Saber stays the HOME role holder.
 - `main` = `origin/main`, all M2 steps committed. Debug build on the S23 (holds HOME). The user's layout and settings were restored after on-device tests (memory `device-layout-backup` has the procedure).
 - Perf after widgets: jank 1.09%, p90 8 ms, p99 15 ms (benchmark build, 12 swipes). Reported only.
 - Not yet verified on device: edge-flip while dragging, contacts search (no `READ_CONTACTS`), Uninstall on a third-party app, Add/Remove home from menus, Suggested row, Media widget, `ROLE_HOME` request dialog, photo import from the settings page, locked-profile behaviour, fresh-install default layout.
 - Known rough edges: dock items don't shift to open a gap while dragging (outline only); locked-profile slots look empty and refuse drops; white "Done" text on the light accent pill is low contrast; `AppRepository.installed` is a cold flow collected separately by home and drawer (two LauncherApps callbacks).
 
 ## Next step
-M3 step 1: extract `:core:widgetdata` from `:feature:widgets` (sources, state, permissions, OpenMeteo, WidgetFormat, WidgetSources, MediaListenerService + manifest entries, tests), add `WidgetDataSource.snapshot()`. No behaviour change; build, test, lint, check home widgets on the S23, commit, push.
+M3 step 2 (`docs/plans/m3-glance-iconpack.md`): `:widgets-glance` foundation (catalog: glance-appwidget + work-runtime-ktx; `GlanceTokens`, `GlanceFrame`, Hilt `@EntryPoint`, `WidgetUpdateReceiver`) + `ClockGlanceWidget` with `TextClock` via `AndroidRemoteViews`; verify by starting One UI Home explicitly and having the user add the widget.

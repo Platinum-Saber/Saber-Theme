@@ -21,7 +21,8 @@ graph TD
   app --> drawer[":feature:drawer"]
   app --> widgets[":feature:widgets"]
   app --> settings[":feature:settings"]
-  glance[":widgets-glance (M3)"] -.-> widgets
+  widgets --> wdata[":core:widgetdata"]
+  glance[":widgets-glance (M3)"] -.-> wdata
   iconpack[":iconpack (M3)"] -.-> icons[":core:icons"]
   home --> ui[":core:ui"]
   drawer --> ui
@@ -48,15 +49,16 @@ graph TD
 | `:core:ui` | Shared app UI: `AppTile` / `HomeAppIcon` / `FolderIcon` (+ `LocalIconAppearance`), `GlassMenu`, `LauncherApp`, `AppIconResolver`, `AppLauncher`, `AppActions` (app long-press menu) |
 | `:feature:home` | Pager, grid, dock, folders, edit mode (drag and drop) |
 | `:feature:drawer` | App drawer and universal search |
-| `:feature:widgets` | Native glass widgets, `WidgetDataSource` implementations, `WidgetCatalog`, widget picker |
+| `:core:widgetdata` | Widget data layer shared by in-launcher and exported widgets: `WidgetDataSource` implementations, `WidgetState`, `WidgetPermissions`, `WidgetSources`, Open-Meteo, `WidgetFormat`, `MediaListenerService` |
+| `:feature:widgets` | Native glass widget UI (`WidgetViews`, `WidgetHost`), `WidgetCatalog`, widget picker |
 | `:feature:settings` | Settings page: wallpaper, glass, icons, default home, about |
 | `:widgets-glance` (M3) | Exported AppWidgets (Glance), reusing the widgets data layer |
 | `:iconpack` (M3) | Separate `applicationId` APK; `appfilter.xml` generated from `:core:icons` |
 
 **Dependency rule:** `feature:*` → `core:*` only. Features never depend on
-each other; `:app` composes them. (`:widgets-glance` depends on the data
-layer of `:feature:widgets`; if that grows, move the sources to
-`:core:widgetdata`.)
+each other; `:app` composes them. The widget data layer lives in
+`:core:widgetdata` so the in-launcher widgets and the exported Glance
+widgets (M3) share it.
 
 ## Layers
 - Unidirectional data flow: Composable ← `StateFlow<UiState>` (ViewModel)
@@ -253,7 +255,8 @@ blurs live. The Tilt effects setting maps onto `env.effects.tilt`.
   NeedsPermission, Error). Each source is a `@Singleton` whose flow is
   shared in `WidgetScope` with `WhileShown` (5 s stop timeout), so a widget
   on screen keeps one receiver or observer and nothing runs while home is
-  stopped. `WidgetSources` bundles them; `:app` injects it once.
+  stopped. `WidgetSources` bundles them; `:app` injects it once. Readers
+  outside composition use `snapshot()` (first non-Loading state, 20 s cap).
 - `WidgetPermissions.gated(permission)` emits NeedsPermission until granted
   and restarts the source when a grant appears (`recheck()` on resume and
   after the permission result). The widget shows "Allow", which asks at
