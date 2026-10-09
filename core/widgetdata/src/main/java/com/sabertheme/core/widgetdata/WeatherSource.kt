@@ -37,7 +37,7 @@ private val FETCHED_AT = longPreferencesKey("fetched_at")
 @Singleton
 class WeatherSource @Inject constructor(
     @ApplicationContext private val context: Context,
-    permissions: WidgetPermissions,
+    private val permissions: WidgetPermissions,
     scope: WidgetScope,
 ) : WidgetDataSource<WeatherData> {
 
@@ -75,6 +75,25 @@ class WeatherSource @Inject constructor(
                 }
                 delay(RETRY_MS)
             }
+        }
+    }
+
+    /**
+     * For background refreshers (exported widgets): fetches when the cache is
+     * missing or older than 30 min. True when new data was stored.
+     */
+    suspend fun refresh(): Boolean {
+        if (!permissions.granted(WidgetPermission.Location)) return false
+        val age = System.currentTimeMillis() - (readCache()?.fetchedAt ?: 0L)
+        if (age in 0 until REFRESH_MS) return false
+        return try {
+            fetch()
+            true
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w(TAG, "Weather refresh failed", e)
+            false
         }
     }
 

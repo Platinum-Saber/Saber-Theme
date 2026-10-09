@@ -2,4 +2,12 @@
 <resources>
     <string name="glance_clock_name">Saber Clock</string>
     <string name="glance_clock_description">Time, date and your next alarm</string>
+    <string name="glance_weather_name">Saber Weather</string>
+    <string name="glance_weather_description">Weather for your area, with the next hours</string>
+    <string name="glance_calendar_name">Saber Calendar</string>
+    <string name="glance_calendar_description">Today and your next events</string>
+    <string name="glance_battery_name">Saber Battery</string>
+    <string name="glance_battery_description">Battery level and charging</string>
+    <string name="glance_alarm_name">Saber Next alarm</string>
+    <string name="glance_alarm_description">When your next alarm rings</string>
 </resources>

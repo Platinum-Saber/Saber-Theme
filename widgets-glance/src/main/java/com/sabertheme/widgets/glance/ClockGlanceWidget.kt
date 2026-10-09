@@ -14,9 +14,7 @@ import androidx.glance.GlanceModifier
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.AndroidRemoteViews
 import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
-import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.provideContent
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
@@ -54,9 +52,13 @@ class ClockGlanceWidget : GlanceAppWidget() {
             ClockContent(context, (alarm as? WidgetState.Ready)?.data, is24Hour)
         }
     }
+
+    override suspend fun providePreview(context: Context, widgetCategory: Int) {
+        provideContent { ClockContent(context, GlanceSamples.alarm, is24Hour = true) }
+    }
 }
 
-class ClockGlanceReceiver : GlanceAppWidgetReceiver() {
+class ClockGlanceReceiver : SaberGlanceReceiver() {
     override val glanceAppWidget: GlanceAppWidget = ClockGlanceWidget()
 }
 
@@ -67,7 +69,7 @@ private fun ClockContent(context: Context, alarm: AlarmData?, is24Hour: Boolean)
         val at = LocalDateTime.ofInstant(Instant.ofEpochMilli(it), ZoneId.systemDefault())
         WidgetFormat.alarm(at, LocalDateTime.now(), is24Hour)
     }
-    val open = GlanceModifier.clickable(actionStartActivity(Intent(AlarmClock.ACTION_SHOW_ALARMS)))
+    val open = GlanceModifier.clickable(context.openAction(Intent(AlarmClock.ACTION_SHOW_ALARMS)))
     GlanceFrame(wide = layout != GlanceLayout.Square, modifier = open) {
         when (layout) {
             GlanceLayout.Wide -> Column(

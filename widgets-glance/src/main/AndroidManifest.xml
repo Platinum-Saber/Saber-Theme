@@ -1,8 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Widget taps resolve these to explicit intents (see GlanceSupport.openAction). -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.SHOW_ALARMS" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.POWER_USAGE_SUMMARY" />
+        </intent>
+    </queries>
+
     <application>
-        <!-- Saber widgets for other launchers (Glance). -->
+        <!-- Saber widgets for other launchers (Glance), one receiver each. -->
         <receiver
             android:name=".ClockGlanceReceiver"
             android:exported="true"
@@ -13,6 +23,50 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/glance_clock_info" />
+        </receiver>
+        <receiver
+            android:name=".WeatherGlanceReceiver"
+            android:exported="true"
+            android:label="@string/glance_weather_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/glance_weather_info" />
+        </receiver>
+        <receiver
+            android:name=".CalendarGlanceReceiver"
+            android:exported="true"
+            android:label="@string/glance_calendar_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/glance_calendar_info" />
+        </receiver>
+        <receiver
+            android:name=".BatteryGlanceReceiver"
+            android:exported="true"
+            android:label="@string/glance_battery_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/glance_battery_info" />
+        </receiver>
+        <receiver
+            android:name=".AlarmGlanceReceiver"
+            android:exported="true"
+            android:label="@string/glance_alarm_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/glance_alarm_info" />
         </receiver>
 
         <!-- Exempt implicit broadcasts that change what the widgets show. -->
@@ -26,5 +80,14 @@
                 <action android:name="android.app.action.NEXT_ALARM_CLOCK_CHANGED" />
             </intent-filter>
         </receiver>
+
+        <!-- "Tap to allow" on a widget: asks for the permission without opening Saber's home. -->
+        <activity
+            android:name=".GlancePermissionActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:taskAffinity="com.sabertheme.launcher.widgetpermission"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
     </application>
 </manifest>

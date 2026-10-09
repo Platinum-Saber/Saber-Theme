@@ -4,18 +4,10 @@ import android.app.AlarmManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import androidx.glance.appwidget.updateAll
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-
-/** Every Saber widget exported to other launchers. */
-object SaberGlanceWidgets {
-    suspend fun updateAll(context: Context) {
-        ClockGlanceWidget().updateAll(context)
-    }
-}
 
 /** Time, zone, locale and next-alarm changes (all exempt from implicit-broadcast limits) redraw the widgets. */
 class WidgetUpdateReceiver : BroadcastReceiver() {
