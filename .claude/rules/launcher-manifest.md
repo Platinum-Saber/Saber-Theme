@@ -35,3 +35,13 @@ paths:
   `WidgetUpdateReceiver` (`exported="false"`) for exempt implicit
   broadcasts only (TIME_SET, TIMEZONE_CHANGED, LOCALE_CHANGED,
   NEXT_ALARM_CLOCK_CHANGED); it checks the action before acting.
+  `GlancePermissionActivity` is translucent and `exported="false"`.
+  `WidgetRefreshWorker` is WorkManager (no manifest entry). Tap targets
+  without data (`SHOW_ALARMS`, `POWER_USAGE_SUMMARY`) need `<queries>`
+  entries because `openAction()` resolves them to explicit intents.
+- Icon pack (`:iconpack`, separate APK): `InfoActivity` is `exported="true"`
+  with MAIN/LAUNCHER plus one `DEFAULT` filter listing the theme actions
+  launchers query (`org.adw.launcher.THEMES`, `com.novalauncher.THEME`,
+  `com.teslacoilsw.launcher.THEME`, `com.anddoes.launcher.THEME`,
+  `com.gau.go.launcherex.theme`, `com.fede.launcher.THEME_ICONPACK`). No
+  permissions.
