@@ -1,7 +1,5 @@
 package com.sabertheme.feature.home
 
-import android.net.Uri
-import android.util.Log
 import android.view.View
 import androidx.compose.ui.geometry.Rect
 import androidx.lifecycle.ViewModel
@@ -35,7 +33,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -144,49 +141,8 @@ class HomeViewModel @Inject constructor(
     val settings: StateFlow<GlassSettings?> =
         settingsRepository.settings.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
-    val photos: StateFlow<List<String>> = wallpaperStore.photos
-
-    private val _importing = MutableStateFlow(false)
-    val importing: StateFlow<Boolean> = _importing.asStateFlow()
-
     fun backdropSource(choice: WallpaperChoice): BackdropSource = when (choice) {
         is WallpaperChoice.Bundled -> BackdropSource.Aurora(AuroraWallpaper.byId(choice.id))
         is WallpaperChoice.Photo -> BackdropSource.Photo(choice.fileName) { wallpaperStore.load(choice.fileName) }
-    }
-
-    suspend fun photoThumbnail(fileName: String, width: Int) = wallpaperStore.thumbnail(fileName, width)
-
-    fun selectWallpaper(choice: WallpaperChoice) {
-        viewModelScope.launch { settingsRepository.setWallpaper(choice) }
-    }
-
-    fun importPhoto(uri: Uri) {
-        viewModelScope.launch {
-            _importing.value = true
-            try {
-                selectWallpaper(WallpaperChoice.Photo(wallpaperStore.import(uri)))
-            } catch (e: Exception) {
-                Log.w(TAG, "Wallpaper import failed", e)
-            } finally {
-                _importing.value = false
-            }
-        }
-    }
-
-    fun deletePhoto(fileName: String) {
-        viewModelScope.launch {
-            if (settings.value?.wallpaper == WallpaperChoice.Photo(fileName)) {
-                settingsRepository.setWallpaper(WallpaperChoice.Default)
-            }
-            wallpaperStore.delete(fileName)
-        }
-    }
-
-    fun setIntensity(value: Float) {
-        viewModelScope.launch { settingsRepository.setIntensity(value) }
-    }
-
-    private companion object {
-        const val TAG = "HomeViewModel"
     }
 }

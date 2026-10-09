@@ -3,6 +3,7 @@ package com.sabertheme.core.data
 import com.google.common.truth.Truth.assertThat
 import com.sabertheme.core.data.SettingsRepository.Companion.decode
 import com.sabertheme.core.data.SettingsRepository.Companion.encode
+import com.sabertheme.core.model.IconStyle
 import com.sabertheme.core.model.WallpaperChoice
 import org.junit.Test
 
@@ -18,5 +19,12 @@ class WallpaperChoiceCodecTest {
     fun missingOrUnknownFallsBackToDefault() {
         assertThat(decode(null)).isEqualTo(WallpaperChoice.Default)
         assertThat(decode("video:x")).isEqualTo(WallpaperChoice.Default)
+    }
+
+    @Test
+    fun iconStyleDecodesByNameWithTileFallback() {
+        for (style in IconStyle.entries) assertThat(SettingsRepository.decodeIconStyle(style.name)).isEqualTo(style)
+        assertThat(SettingsRepository.decodeIconStyle(null)).isEqualTo(IconStyle.Tile)
+        assertThat(SettingsRepository.decodeIconStyle("Neon")).isEqualTo(IconStyle.Tile)
     }
 }

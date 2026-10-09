@@ -13,8 +13,21 @@ sealed interface WallpaperChoice {
     }
 }
 
+/** How app icons are drawn (Figma IconTile Style). */
+enum class IconStyle {
+    /** Glyph on a glass squircle. */
+    Tile,
+
+    /** Glyph only, a little larger; folders keep their glass. */
+    Bare,
+}
+
 data class GlassSettings(
     /** 0..1 user effect strength; the effects policy may lower it further. */
     val intensity: Float = 1f,
     val wallpaper: WallpaperChoice = WallpaperChoice.Default,
+    val iconStyle: IconStyle = IconStyle.Tile,
+    val showLabels: Boolean = true,
+    /** Device tilt moves the light and the wallpaper. */
+    val tiltEnabled: Boolean = true,
 )

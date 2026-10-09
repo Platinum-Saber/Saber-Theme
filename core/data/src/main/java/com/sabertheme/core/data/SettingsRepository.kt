@@ -2,10 +2,12 @@ package com.sabertheme.core.data
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.sabertheme.core.model.GlassSettings
+import com.sabertheme.core.model.IconStyle
 import com.sabertheme.core.model.WallpaperChoice
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -13,7 +15,7 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Glass and wallpaper settings, persisted so One UI killing the launcher loses nothing. */
+/** Glass, wallpaper and icon settings, persisted so One UI killing the launcher loses nothing. */
 @Singleton
 class SettingsRepository @Inject constructor(private val store: DataStore<Preferences>) {
 
@@ -22,6 +24,9 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
             GlassSettings(
                 intensity = prefs[INTENSITY] ?: 1f,
                 wallpaper = decode(prefs[WALLPAPER]),
+                iconStyle = decodeIconStyle(prefs[ICON_STYLE]),
+                showLabels = prefs[SHOW_LABELS] ?: true,
+                tiltEnabled = prefs[TILT] ?: true,
             )
         }
         .distinctUntilChanged()
@@ -34,9 +39,26 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
         store.edit { it[WALLPAPER] = encode(choice) }
     }
 
+    suspend fun setIconStyle(style: IconStyle) {
+        store.edit { it[ICON_STYLE] = style.name }
+    }
+
+    suspend fun setShowLabels(show: Boolean) {
+        store.edit { it[SHOW_LABELS] = show }
+    }
+
+    suspend fun setTiltEnabled(enabled: Boolean) {
+        store.edit { it[TILT] = enabled }
+    }
+
     internal companion object {
         val INTENSITY = floatPreferencesKey("glass_intensity")
         val WALLPAPER = stringPreferencesKey("wallpaper")
+        val ICON_STYLE = stringPreferencesKey("icon_style")
+        val SHOW_LABELS = booleanPreferencesKey("show_labels")
+        val TILT = booleanPreferencesKey("tilt")
+
+        fun decodeIconStyle(value: String?): IconStyle = IconStyle.entries.firstOrNull { it.name == value } ?: IconStyle.Tile
 
         fun encode(choice: WallpaperChoice): String = when (choice) {
             is WallpaperChoice.Bundled -> "bundled:${choice.id}"

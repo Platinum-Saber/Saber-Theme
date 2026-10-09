@@ -1,6 +1,6 @@
 # Handoff: Milestone 2 — in-launcher experience
 
-**Goal:** Build M2 per `docs/plans/m2-in-launcher.md`; steps 1–6 done, continue at step 7 (settings), then docs (8).
+**Goal:** Build M2 per `docs/plans/m2-in-launcher.md`; steps 1–7 done; only step 8 (docs + wrap-up, M3 handoff) remains.
 
 ## Decisions
 - M2 = drawer/search, native widgets, edit mode, settings. Glance widgets + icon-pack APK are M3.
@@ -28,6 +28,8 @@
 - `core/data/.../LaunchStats.kt` — launch counts (recorded in `AppLauncher.launch`), `LaunchStats.top` for Suggested.
 - Edit mode (`feature/home`): `DragState.kt` (pickup modifier, root `dragTracker`, target resolution, ghost `DragLayer`), `HomeGrid.kt` (geometry + hit-testing), `EditChrome.kt` (top bar / Remove zone, page thumbnails, toolbar, remove-empty-page). All layout edits go through `HomeLayoutPolicy.drop`/`renameFolder`/`addPage`/`removePage` (`core/model/.../HomeEdit.kt` for `DragSource`/`DropTarget`) and `HomeViewModel.edit`, which shows the result at once via a `pending` override and saves through `LayoutRepository`.
 - `feature/widgets/.../WidgetPicker.kt` — picker sheet; `:app` opens it from home menu / edit toolbar and calls `HomeViewModel.addWidget` (scrolls to the landing page via `focusPage`).
+- `feature/settings/` — `SettingsScreen` + `SettingsState` (hoisted in `HomeActivity`, blurs home like the drawer), `SettingsViewModel` (wallpaper ops moved here from `HomeViewModel`), `WallpaperPicker.kt` (was `HomeOptionsSheet`, removed). Glass Lab is passed in as `debugTools` in debug/benchmark.
+- `GlassSettings` has `iconStyle` (`IconStyle.Tile`/`Bare`), `showLabels`, `tiltEnabled`. Icons read `LocalIconAppearance` (`core/ui/.../AppIcons.kt`, provided in `HomeActivity`); tilt maps onto `env.effects.tilt`. New `GlassSwitch` in `core/designsystem/.../component`.
 - `core/designsystem/.../glass/GlassProgram.kt` — pooled AGSL shaders; `core/icons/.../GlyphImages.kt` — cached glyph bitmaps.
 
 ## State
@@ -35,7 +37,8 @@
 - Benchmark build is profileable + unobfuscated (`simpleperf record --app com.sabertheme.launcher` works). adb is at `C:/Users/User/AppData/Local/Android/Sdk/platform-tools/adb.exe` (not on bash PATH).
 - Calendar + Location now granted by the user on device; calendar shows real events. Weather untested with real data: device location is off (`location_mode=0`), widget now says "Location is off".
 - Edit mode verified on device (then the user's layout restored from backup, see memory `device-layout-backup`): menu → edit, app→app folder, move, rename, drag out of folder, Remove, dock↔page, picker add (new page + scroll), widget span move/remove, remove empty page, long-press-drag from normal mode, layout survives force-stop.
+- Settings verified on device (then restored from backup): opens from home menu, Bare icons + labels off apply live, tilt toggle syncs Glass Lab, default-home row shows Saber. Not tried: the ROLE_HOME request dialog (Saber already holds HOME), photo import from the new page.
 - Untested: edge-flip to the next page while dragging; contacts search (READ_CONTACTS not granted), Uninstall on a third-party app, Add/Remove home round trip on device, Suggested row (fills as launches are counted); Media widget (picker-only, needs notification access); fresh-install default layout on device (unit-tested only; don't `pm clear` the user's phone); locked-profile behaviour on device; photo-wallpaper import.
 
 ## Next step
-M2 step 7 (`docs/plans/m2-in-launcher.md`): `:feature:settings` — full-screen Thick glass settings (Wallpaper moved from `HomeOptionsSheet` incl. photo import, Glass intensity/tilt, Icons Tile/Bare + labels, Home default via `RoleManager`, About + Glass Lab in debug/benchmark). `GlassSettings` gains `iconStyle`, `showLabels`, `tiltEnabled`; remove `HomeOptionsSheet`; home menu "Launcher settings" and edit toolbar Settings/Wallpaper open it (both currently call `onOpenOptions`).
+M2 step 8 (`docs/plans/m2-in-launcher.md`): update `docs/architecture.md` (module graph incl. `:core:ui`, `:feature:widgets/drawer/settings`; layout v2 + edit ops; widgets; drawer/search; edit mode; settings; perf numbers: 1.09% jank / p90 8 ms after widgets), `.claude/rules/launcher-manifest.md` (INTERNET, COARSE_LOCATION, READ_CALENDAR, READ_CONTACTS, REQUEST_DELETE_PACKAGES, notification-listener service, adjustResize), then write the M3 handoff (Glance exported widgets + icon-pack APK).

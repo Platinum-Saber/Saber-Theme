@@ -108,7 +108,7 @@ private const val EDIT_SHRINK = 0.2f
 fun HomeScreen(
     state: HomeUiState,
     viewModel: HomeViewModel,
-    onOpenOptions: () -> Unit,
+    onOpenSettings: () -> Unit,
     onOpenDrawer: (withKeyboard: Boolean) -> Unit = {},
     onOpenWidgets: () -> Unit = {},
     backgroundBlur: () -> Float = { 0f },
@@ -190,8 +190,8 @@ fun HomeScreen(
             items = listOf(
                 MenuItem(UiGlyph.EDIT.drawable, "Edit home screen") { editing = true },
                 MenuItem(UiGlyph.WIDGETS.drawable, "Widgets", onClick = onOpenWidgets),
-                MenuItem(UiGlyph.WALLPAPER.drawable, "Wallpaper & style", onClick = onOpenOptions),
-                MenuItem(AppGlyph.SETTINGS.drawable, "Launcher settings", onClick = onOpenOptions),
+                MenuItem(UiGlyph.WALLPAPER.drawable, "Wallpaper & style", onClick = onOpenSettings),
+                MenuItem(AppGlyph.SETTINGS.drawable, "Launcher settings", onClick = onOpenSettings),
             ),
         )
     }
@@ -305,9 +305,9 @@ fun HomeScreen(
             Box(Modifier.height(68.dp).padding(horizontal = SIDE), contentAlignment = Alignment.BottomCenter) {
                 if (editing) {
                     EditToolbar(
-                        onWallpaper = onOpenOptions,
+                        onWallpaper = onOpenSettings,
                         onWidgets = onOpenWidgets,
-                        onSettings = onOpenOptions,
+                        onSettings = onOpenSettings,
                         modifier = Modifier.graphicsLayer { alpha = edit.value },
                     )
                 } else {

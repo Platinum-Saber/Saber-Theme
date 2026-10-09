@@ -36,6 +36,7 @@ dependencies {
     implementation(projects.core.ui)
     implementation(projects.feature.drawer)
     implementation(projects.feature.home)
+    implementation(projects.feature.settings)
     implementation(projects.feature.widgets)
 
     implementation(libs.androidx.core.ktx)

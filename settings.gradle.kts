@@ -27,5 +27,6 @@ include(
     ":core:ui",
     ":feature:drawer",
     ":feature:home",
+    ":feature:settings",
     ":feature:widgets",
 )

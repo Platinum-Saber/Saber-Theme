@@ -1,6 +1,11 @@
 package com.sabertheme.core.ui
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,12 +14,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.semantics.contentDescription
@@ -23,12 +32,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.sabertheme.core.designsystem.glass.GlassMotion
 import com.sabertheme.core.designsystem.glass.GlassShape
 import com.sabertheme.core.designsystem.glass.GlassSurface
 import com.sabertheme.core.designsystem.theme.GlassMaterial
 import com.sabertheme.core.designsystem.theme.Radius
 import com.sabertheme.core.designsystem.theme.Saber
 import com.sabertheme.core.icons.AppGlyphIcon
+import com.sabertheme.core.model.IconStyle
 
 val CELL_WIDTH = 72.dp
 val TILE_SIZE = 56.dp
@@ -45,7 +56,16 @@ fun rememberBoundsRef() = remember { BoundsRef() }
 
 fun Modifier.trackBounds(ref: BoundsRef) = onGloballyPositioned { ref.rect = it.boundsInWindow() }
 
-/** Glass squircle holding one glyph (Figma IconTile, Style=Tile). */
+/** User icon settings, provided once at the root. */
+@Immutable
+data class IconAppearance(val style: IconStyle = IconStyle.Tile, val showLabels: Boolean = true)
+
+val LocalIconAppearance = staticCompositionLocalOf { IconAppearance() }
+
+/**
+ * One app glyph (Figma IconTile): on a glass squircle (Style=Tile) or bare
+ * and a little larger (Style=Bare), per [LocalIconAppearance].
+ */
 @Composable
 fun AppTile(
     app: LauncherApp,
@@ -55,6 +75,10 @@ fun AppTile(
     onLongClick: ((Rect, Offset) -> Unit)?,
 ) {
     val bounds = rememberBoundsRef()
+    if (LocalIconAppearance.current.style == IconStyle.Bare) {
+        BareTile(app, modifier.size(size).trackBounds(bounds), size, bounds, onClick, onLongClick)
+        return
+    }
     GlassSurface(
         modifier.size(size).trackBounds(bounds).semantics { contentDescription = app.entry.label },
         shape = GlassShape.Rounded(Radius.icon * (size / TILE_SIZE)),
@@ -63,6 +87,42 @@ fun AppTile(
         onLongClick = onLongClick?.let { { it(bounds.rect, bounds.rect.center) } },
     ) {
         AppGlyphIcon(app.icon, Saber.colors.glyph, Modifier.align(Alignment.Center), size * (24f / 56f))
+    }
+}
+
+@Composable
+private fun BareTile(
+    app: LauncherApp,
+    modifier: Modifier,
+    size: Dp,
+    bounds: BoundsRef,
+    onClick: ((Rect) -> Unit)?,
+    onLongClick: ((Rect, Offset) -> Unit)?,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (pressed) 0.9f else 1f, GlassMotion.press(), label = "bare-press")
+    val clicks = if (onClick == null && onLongClick == null) {
+        Modifier
+    } else {
+        Modifier.combinedClickable(
+            interactionSource = interaction,
+            indication = null,
+            onLongClick = onLongClick?.let { { it(bounds.rect, bounds.rect.center) } },
+            onClick = { onClick?.invoke(bounds.rect) },
+        )
+    }
+    Box(
+        modifier
+            .semantics { contentDescription = app.entry.label }
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .then(clicks),
+        contentAlignment = Alignment.Center,
+    ) {
+        AppGlyphIcon(app.icon, Saber.colors.glyph, size = size * (30f / 56f))
     }
 }
 
@@ -78,8 +138,10 @@ fun HomeAppIcon(
     Column(modifier.width(CELL_WIDTH), horizontalAlignment = Alignment.CenterHorizontally) {
         Spacer(Modifier.height(2.dp))
         AppTile(app, tileModifier, onClick = onClick, onLongClick = onLongClick)
-        Spacer(Modifier.height(6.dp))
-        IconLabel(app.entry.label)
+        if (LocalIconAppearance.current.showLabels) {
+            Spacer(Modifier.height(6.dp))
+            IconLabel(app.entry.label)
+        }
     }
 }
 
@@ -120,7 +182,9 @@ fun FolderIcon(
                 }
             }
         }
-        Spacer(Modifier.height(6.dp))
-        IconLabel(name)
+        if (LocalIconAppearance.current.showLabels) {
+            Spacer(Modifier.height(6.dp))
+            IconLabel(name)
+        }
     }
 }

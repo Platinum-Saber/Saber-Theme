@@ -1,4 +1,4 @@
-package com.sabertheme.feature.home
+package com.sabertheme.feature.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -33,8 +34,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import com.sabertheme.core.designsystem.component.GlassSheet
-import com.sabertheme.core.designsystem.component.GlassSlider
 import com.sabertheme.core.designsystem.glass.GlassBackdrop
 import com.sabertheme.core.designsystem.glass.GlassShape
 import com.sabertheme.core.designsystem.glass.GlassSurface
@@ -52,60 +51,31 @@ import kotlinx.coroutines.withContext
 private val THUMB_W = 72.dp
 private val THUMB_H = 136.dp
 
-/**
- * Long-press-on-home sheet: wallpaper (bundled or your own photos) and glass
- * intensity. [extra] lets the app add debug tools such as the Glass Lab.
- */
+/** Bundled Aurora wallpapers and imported photos, with "+ Photo" to add one. */
 @Composable
-fun HomeOptionsSheet(
-    visible: Boolean,
-    onDismiss: () -> Unit,
-    settings: GlassSettings,
-    photos: List<String>,
-    importing: Boolean,
-    viewModel: HomeViewModel,
-    /** Called while dragging so the glass responds before the value is saved. */
-    onIntensityPreview: (Float) -> Unit,
-    extra: @Composable () -> Unit = {},
-) {
+internal fun WallpaperPicker(settings: GlassSettings, photos: List<String>, importing: Boolean, viewModel: SettingsViewModel) {
     val picker = rememberLauncherForActivityResult(PickVisualMedia()) { uri ->
         if (uri != null) viewModel.importPhoto(uri)
     }
-    GlassSheet(visible, onDismiss) {
-        SectionTitle("Wallpaper")
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(Space.s3)) {
-            item(key = "add") {
-                AddPhotoTile(importing) { picker.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly)) }
-            }
-            items(AuroraWallpaper.bundled, key = { it.id }) { spec ->
-                val choice = WallpaperChoice.Bundled(spec.id)
-                val thumb = auroraThumb(spec)
-                WallpaperTile(thumb, spec.id, selected = settings.wallpaper == choice, onDelete = null) {
-                    viewModel.selectWallpaper(choice)
-                }
-            }
-            items(photos, key = { it }) { name ->
-                val choice = WallpaperChoice.Photo(name)
-                val thumb = photoThumb(viewModel, name)
-                WallpaperTile(thumb, "Photo", selected = settings.wallpaper == choice, onDelete = { viewModel.deletePhoto(name) }) {
-                    viewModel.selectWallpaper(choice)
-                }
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(Space.s3), contentPadding = PaddingValues(Space.s3)) {
+        item(key = "add") {
+            AddPhotoTile(importing) { picker.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly)) }
+        }
+        items(AuroraWallpaper.bundled, key = { it.id }) { spec ->
+            val choice = WallpaperChoice.Bundled(spec.id)
+            val thumb = auroraThumb(spec)
+            WallpaperTile(thumb, spec.id, selected = settings.wallpaper == choice, onDelete = null) {
+                viewModel.selectWallpaper(choice)
             }
         }
-        Spacer(Modifier.height(Space.s5))
-        SectionTitle("Glass intensity")
-        GlassSlider(
-            value = settings.intensity,
-            onValueChange = onIntensityPreview,
-            onValueChangeFinished = viewModel::setIntensity,
-        )
-        extra()
+        items(photos, key = { it }) { name ->
+            val choice = WallpaperChoice.Photo(name)
+            val thumb = photoThumb(viewModel, name)
+            WallpaperTile(thumb, "Photo", selected = settings.wallpaper == choice, onDelete = { viewModel.deletePhoto(name) }) {
+                viewModel.selectWallpaper(choice)
+            }
+        }
     }
-}
-
-@Composable
-private fun SectionTitle(text: String) {
-    BasicText(text, Modifier.padding(bottom = Space.s3), style = Saber.type.titleMedium.copy(color = Saber.colors.textPrimary))
 }
 
 @Composable
@@ -119,7 +89,7 @@ private fun auroraThumb(spec: AuroraWallpaper): ImageBitmap? {
 }
 
 @Composable
-private fun photoThumb(viewModel: HomeViewModel, name: String): ImageBitmap? {
+private fun photoThumb(viewModel: SettingsViewModel, name: String): ImageBitmap? {
     val w = with(LocalDensity.current) { THUMB_W.roundToPx() }
     return produceState<ImageBitmap?>(null, name, w) {
         value = viewModel.photoThumbnail(name, w)?.asImageBitmap()

@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sabertheme.core.designsystem.glass.BackdropLoader
 import com.sabertheme.core.designsystem.glass.GlassEffectsController
@@ -29,9 +30,13 @@ import com.sabertheme.core.designsystem.theme.SaberTheme
 import com.sabertheme.feature.drawer.AppDrawer
 import com.sabertheme.feature.drawer.DrawerViewModel
 import com.sabertheme.feature.drawer.rememberDrawerState
-import com.sabertheme.feature.home.HomeOptionsSheet
 import com.sabertheme.feature.home.HomeScreen
 import com.sabertheme.feature.home.HomeViewModel
+import com.sabertheme.feature.settings.SettingsScreen
+import com.sabertheme.feature.settings.SettingsViewModel
+import com.sabertheme.feature.settings.rememberSettingsState
+import com.sabertheme.core.ui.IconAppearance
+import com.sabertheme.core.ui.LocalIconAppearance
 import com.sabertheme.feature.widgets.WidgetHost
 import com.sabertheme.feature.widgets.WidgetPicker
 import com.sabertheme.feature.widgets.WidgetSources
@@ -46,6 +51,7 @@ import javax.inject.Inject
 class HomeActivity : ComponentActivity() {
     private val viewModel: HomeViewModel by viewModels()
     private val drawerViewModel: DrawerViewModel by viewModels()
+    private val settingsViewModel: SettingsViewModel by viewModels()
 
     /** Bumped by the Home button while already home; closes the drawer. */
     private val homePresses = MutableStateFlow(0)
@@ -58,12 +64,10 @@ class HomeActivity : ComponentActivity() {
         setContent {
             BackHandler {}
             val settings = viewModel.settings.collectAsStateWithLifecycle().value ?: return@setContent
-            val photos by viewModel.photos.collectAsStateWithLifecycle()
-            val importing by viewModel.importing.collectAsStateWithLifecycle()
             val home = viewModel.home.collectAsStateWithLifecycle().value
             val env = rememberGlassEnvironment()
             var previewIntensity by remember { mutableStateOf<Float?>(null) }
-            var optionsOpen by rememberSaveable { mutableStateOf(false) }
+            val settingsPage = rememberSettingsState()
             var frameOverlay by rememberSaveable { mutableStateOf(false) }
             val drawer = rememberDrawerState()
             var widgetPickerOpen by rememberSaveable { mutableStateOf(false) }
@@ -72,6 +76,7 @@ class HomeActivity : ComponentActivity() {
             LaunchedEffect(Unit) {
                 homePresses.drop(1).collect {
                     drawer.close()
+                    settingsPage.close()
                     widgetPickerOpen = false
                 }
             }
@@ -79,18 +84,23 @@ class HomeActivity : ComponentActivity() {
             LaunchedEffect(settings.intensity) { previewIntensity = null }
             BackdropLoader(env, remember(settings.wallpaper) { viewModel.backdropSource(settings.wallpaper) })
             GlassEffectsController(env, previewIntensity ?: settings.intensity)
+            LaunchedEffect(settings.tiltEnabled) {
+                env.effects = env.effects.copy(tilt = settings.tiltEnabled)
+                if (!settings.tiltEnabled) env.tiltParallax = Offset.Zero
+            }
+            val icons = remember(settings.iconStyle, settings.showLabels) { IconAppearance(settings.iconStyle, settings.showLabels) }
 
-            CompositionLocalProvider(LocalGlassEnvironment provides env) {
+            CompositionLocalProvider(LocalGlassEnvironment provides env, LocalIconAppearance provides icons) {
                 SaberTheme(dark = env.backdrop?.dark ?: true) {
                     Box(Modifier.fillMaxSize().glassInteractionTracker(env)) {
                         if (home != null) {
                             HomeScreen(
                                 home,
                                 viewModel,
-                                onOpenOptions = { optionsOpen = true },
+                                onOpenSettings = settingsPage::open,
                                 onOpenDrawer = { drawer.open(keyboard = it) },
                                 onOpenWidgets = { widgetPickerOpen = true },
-                                backgroundBlur = { drawer.fraction },
+                                backgroundBlur = { maxOf(drawer.fraction, settingsPage.fraction) },
                                 resetSignal = homePressCount,
                                 widgetContent = { widget, size, modifier -> WidgetHost(widgets, widget, size, modifier) },
                             )
@@ -101,18 +111,17 @@ class HomeActivity : ComponentActivity() {
                         WidgetPicker(widgetPickerOpen, onDismiss = { widgetPickerOpen = false }) { type, size ->
                             viewModel.addWidget(type, size)
                         }
-                        if (frameOverlay) FrameStatsOverlay(Modifier.align(Alignment.TopCenter))
-                        HomeOptionsSheet(
-                            visible = optionsOpen,
-                            onDismiss = { optionsOpen = false },
-                            settings = settings,
-                            photos = photos,
-                            importing = importing,
-                            viewModel = viewModel,
+                        SettingsScreen(
+                            settingsPage,
+                            settingsViewModel,
                             onIntensityPreview = { previewIntensity = it },
-                        ) {
-                            if (BuildConfig.DEBUG || BuildConfig.BUILD_TYPE == "benchmark") GlassLab(env, frameOverlay) { frameOverlay = it }
-                        }
+                            debugTools = if (BuildConfig.DEBUG || BuildConfig.BUILD_TYPE == "benchmark") {
+                                { GlassLab(env, frameOverlay) { frameOverlay = it } }
+                            } else {
+                                null
+                            },
+                        )
+                        if (frameOverlay) FrameStatsOverlay(Modifier.align(Alignment.TopCenter))
                     }
                 }
             }
