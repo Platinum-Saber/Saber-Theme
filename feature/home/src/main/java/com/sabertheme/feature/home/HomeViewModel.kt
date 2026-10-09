@@ -1,17 +1,28 @@
 package com.sabertheme.feature.home
 
+import android.graphics.Rect
 import android.net.Uri
+import android.os.Bundle
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.sabertheme.core.data.AppRepository
+import com.sabertheme.core.data.HomeRepository
 import com.sabertheme.core.data.SettingsRepository
 import com.sabertheme.core.data.WallpaperStore
 import com.sabertheme.core.designsystem.glass.BackdropSource
 import com.sabertheme.core.designsystem.wallpaper.AuroraWallpaper
+import com.sabertheme.core.icons.AppIconSource
+import com.sabertheme.core.icons.IconMapper
+import com.sabertheme.core.model.AppEntry
+import com.sabertheme.core.model.AppKey
 import com.sabertheme.core.model.GlassSettings
+import com.sabertheme.core.model.HomeItem
 import com.sabertheme.core.model.WallpaperChoice
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,7 +34,41 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val wallpaperStore: WallpaperStore,
+    private val appRepository: AppRepository,
+    homeRepository: HomeRepository,
 ) : ViewModel() {
+
+    private val iconCache = HashMap<AppKey, AppIconSource>()
+
+    /** Null until apps and layout are loaded. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val home: StateFlow<HomeUiState?> = homeRepository
+        .home { pkg -> IconMapper.glyphFor(pkg)?.key }
+        .mapLatest { home ->
+            suspend fun app(key: AppKey): HomeApp? {
+                val entry = home.apps[key] ?: return null
+                return HomeApp(entry, icon(entry))
+            }
+            HomeUiState(
+                dock = home.layout.dock.mapNotNull { app(it) },
+                pages = home.layout.pages.map { page ->
+                    page.mapNotNull { item ->
+                        when (item) {
+                            is HomeItem.App -> app(item.key)?.let(HomeCell::App)
+                            is HomeItem.Folder -> HomeCell.Folder(item.id, item.name, item.apps.mapNotNull { app(it) })
+                        }
+                    }
+                },
+            )
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    private suspend fun icon(entry: AppEntry): AppIconSource =
+        iconCache[entry.key] ?: IconMapper.resolveSuspending(entry, appRepository).also { iconCache[entry.key] = it }
+
+    fun launch(key: AppKey, sourceBounds: Rect?, options: Bundle?) = appRepository.launch(key, sourceBounds, options)
+
+    fun openAppInfo(key: AppKey, sourceBounds: Rect?) = appRepository.openAppInfo(key, sourceBounds)
 
     /** Null until DataStore has been read, so the default wallpaper never flashes. */
     val settings: StateFlow<GlassSettings?> =
@@ -74,4 +119,10 @@ class HomeViewModel @Inject constructor(
     private companion object {
         const val TAG = "HomeViewModel"
     }
+}
+
+private suspend fun IconMapper.resolveSuspending(entry: AppEntry, apps: AppRepository): AppIconSource {
+    glyphFor(entry.packageName)?.let { return AppIconSource.Glyph(it) }
+    val mono = apps.monochromeIcon(entry.key)
+    return resolve(entry.packageName, entry.label) { mono }
 }

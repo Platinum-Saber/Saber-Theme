@@ -75,9 +75,12 @@ class WallpaperPalette(
         fun relativeLuminance(r: Int, g: Int, b: Int): Float =
             0.2126f * linear(r) + 0.7152f * linear(g) + 0.0722f * linear(b)
 
-        private fun linear(channel: Int): Float {
-            val c = channel / 255f
-            return if (c <= 0.04045f) c / 12.92f else ((c + 0.055f) / 1.055f).pow(2.4f)
+        private fun linear(channel: Int): Float = LINEAR[channel]
+
+        /** sRGB channel -> linear light, precomputed (called per pixel and per tint solve). */
+        private val LINEAR = FloatArray(256) { i ->
+            val c = i / 255f
+            if (c <= 0.04045f) c / 12.92f else ((c + 0.055f) / 1.055f).pow(2.4f)
         }
     }
 }

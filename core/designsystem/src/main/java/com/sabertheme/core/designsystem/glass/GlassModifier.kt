@@ -81,6 +81,7 @@ private class GlassNode(
     private var shader: RuntimeShader? = null
     private var brush: ShaderBrush? = null
     private var boundBitmap: Bitmap? = null
+    private var uniforms: UniformWriter? = null
 
     // Adaptive tint cache: recomputed only when the sampled region changes.
     private var tintKey = 0L
@@ -100,6 +101,7 @@ private class GlassNode(
         shader = null
         brush = null
         boundBitmap = null
+        uniforms = null
     }
 
     override fun ContentDrawScope.draw() {
@@ -130,25 +132,26 @@ private class GlassNode(
         val originX = windowPos.x + backdrop.overscan - parallax.x
         val originY = windowPos.y + backdrop.overscan - parallax.y
 
-        rs.setFloatUniform("size", size.width, size.height)
-        rs.setFloatUniform("radius", shape.radiusPx(size.width, size.height, density))
-        rs.setFloatUniform("origin", originX, originY)
-        rs.setFloatUniform("backdropScale", backdrop.blurScale)
+        val u = uniforms ?: UniformWriter(rs).also { uniforms = it }
+        u.set("size", size.width, size.height)
+        u.set("radius", shape.radiusPx(size.width, size.height, density))
+        u.set("origin", originX, originY)
+        u.set("backdropScale", backdrop.blurScale)
         val alpha = if (effects.adaptiveTint) adaptiveTint(backdrop, colors, originX, originY) else material.tintAlpha(colors.isDark)
-        rs.setColor("tint", colors.glassTint, alpha)
-        rs.setFloatUniform("refraction", if (effects.refraction) material.refraction * intensity else 0f)
-        rs.setFloatUniform("light", light.x, light.y)
-        rs.setFloatUniform("highlight", material.highlight * (0.4f + 0.6f * intensity))
-        rs.setColor("rimColor", colors.glassHighlight, colors.glassHighlight.alpha * material.rimAlpha / 0.55f)
-        rs.setColor("borderColor", colors.glassBorder, colors.glassBorder.alpha)
-        rs.setFloatUniform("borderWidth", material.borderWidth.toPx())
+        u.setColor("tint", colors.glassTint, alpha)
+        u.set("refraction", if (effects.refraction) material.refraction * intensity else 0f)
+        u.set("light", light.x, light.y)
+        u.set("highlight", material.highlight * (0.4f + 0.6f * intensity))
+        u.setColor("rimColor", colors.glassHighlight, colors.glassHighlight.alpha * material.rimAlpha / 0.55f)
+        u.setColor("borderColor", colors.glassBorder, colors.glassBorder.alpha)
+        u.set("borderWidth", material.borderWidth.toPx())
         val p = press
         if (p != null && effects.press) {
-            rs.setFloatUniform("press", p.point.x, p.point.y, p.progress.value.coerceIn(0f, 1f))
+            u.set("press", p.point.x, p.point.y, p.progress.value.coerceIn(0f, 1f))
         } else {
-            rs.setFloatUniform("press", 0f, 0f, 0f)
+            u.set("press", 0f, 0f, 0f)
         }
-        rs.setColor("bloomColor", Color.White, BLOOM_ALPHA * intensity)
+        u.setColor("bloomColor", Color.White, BLOOM_ALPHA * intensity)
 
         drawRect(brush!!)
         drawContent()
@@ -164,13 +167,16 @@ private class GlassNode(
             (if (colors.isDark) 1L shl 62 else 0L) or
             (material.hashCode().toLong() and 0xF shl 56)
         if (key != tintKey) {
-            val sample = backdrop.palette.sample(x, y, x + size.width, y + size.height)
-            tintAlpha = TintSolver.tintAlpha(
-                backdrop = sample.color,
-                tint = colors.glassTint.toArgb(),
-                text = colors.textPrimary.copy(alpha = 1f).toArgb(),
-                minAlpha = material.tintAlpha(colors.isDark),
-            )
+            // Shared across nodes: icons in the same grid slot on every page hit the same key.
+            tintAlpha = backdrop.tintCache.getOrPut(key) {
+                val sample = backdrop.palette.sample(x, y, x + size.width, y + size.height)
+                TintSolver.tintAlpha(
+                    backdrop = sample.color,
+                    tint = colors.glassTint.toArgb(),
+                    text = colors.textPrimary.copy(alpha = 1f).toArgb(),
+                    minAlpha = material.tintAlpha(colors.isDark),
+                )
+            }
             tintKey = key
         }
         return tintAlpha
@@ -181,5 +187,43 @@ private class GlassNode(
     }
 }
 
-private fun RuntimeShader.setColor(name: String, color: Color, alpha: Float) =
-    setFloatUniform(name, color.red, color.green, color.blue, alpha.coerceIn(0f, 1f))
+/**
+ * Pushes uniforms only when they change. Each RuntimeShader uniform write
+ * crosses JNI and invalidates the native shader, and while paging most of
+ * them are constant.
+ */
+private class UniformWriter(private val shader: RuntimeShader) {
+    private val last = HashMap<String, FloatArray>()
+
+    private fun changed(name: String, a: Float, b: Float, c: Float, d: Float, n: Int): Boolean {
+        val prev = last[name]
+        if (prev != null && prev[0] == a && (n < 2 || prev[1] == b) && (n < 3 || prev[2] == c) && (n < 4 || prev[3] == d)) {
+            return false
+        }
+        val store = prev ?: FloatArray(4).also { last[name] = it }
+        store[0] = a
+        store[1] = b
+        store[2] = c
+        store[3] = d
+        return true
+    }
+
+    fun set(name: String, a: Float) {
+        if (changed(name, a, 0f, 0f, 0f, 1)) shader.setFloatUniform(name, a)
+    }
+
+    fun set(name: String, a: Float, b: Float) {
+        if (changed(name, a, b, 0f, 0f, 2)) shader.setFloatUniform(name, a, b)
+    }
+
+    fun set(name: String, a: Float, b: Float, c: Float) {
+        if (changed(name, a, b, c, 0f, 3)) shader.setFloatUniform(name, a, b, c)
+    }
+
+    fun setColor(name: String, color: Color, alpha: Float) {
+        val a = alpha.coerceIn(0f, 1f)
+        if (changed(name, color.red, color.green, color.blue, a, 4)) {
+            shader.setFloatUniform(name, color.red, color.green, color.blue, a)
+        }
+    }
+}

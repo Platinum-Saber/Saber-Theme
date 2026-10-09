@@ -34,6 +34,11 @@ class GlassBackdrop(
 ) {
     fun blurredFor(material: GlassMaterial): Bitmap = blurred[material.name] ?: blurred.values.first()
 
+    /** Adaptive tint results by quantised surface rect; main thread only (draw). */
+    internal val tintCache = object : LinkedHashMap<Long, Float>(256, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Long, Float>) = size > 4096
+    }
+
     companion object {
         private const val DOWNSAMPLE = 4
 

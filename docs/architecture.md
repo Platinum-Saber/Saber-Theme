@@ -83,6 +83,12 @@ The main technical risk; constraints live in `.claude/rules/glass-rendering.md`.
    thread frames; target < 1% is a home-screen task). Kyant `backdrop` was
    not benchmarked: it records and blurs content live each frame, which the
    cached-backdrop rule rules out. Revisit only for live overlay blur.
+   Real home (step 6, 7 pages, ~25 glass nodes on screen, labels, tilt,
+   adaptive tint): p50 7 ms / p90 9 ms, jank 2.3%. Every glass node must
+   re-record each frame while paging (its backdrop offset changes), so
+   per-node CPU cost is the budget; uniforms are pushed only on change and
+   tint solves are cached. Remaining jank is mostly page composition on
+   swipe; target < 1% is open.
 6. Glance fallback maps the same tokens to a translucent tinted rounded
    background with a 1 px border.
 
