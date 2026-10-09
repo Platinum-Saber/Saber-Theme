@@ -7,7 +7,7 @@ M2 finished the in-launcher experience (drawer, search, native glass widgets, ed
 - **Glance set:** Clock, Weather, Calendar, Battery, Next alarm (no Media — it needs background session pushes; later).
 - **Icon components:** dumped from the S23 over adb into a checked-in `design/icons/components.json`.
 - **Icon look:** adaptive icons (opaque Glance-style background + glyph foreground + monochrome layer), so any launcher's shape mask applies.
-- **Icon-pack check:** Nova Launcher on the S23 first; if Nova can't load the pack, Lawnchair (open source) instead. The user installs either; I never download apps.
+- **Icon-pack check:** Lawnchair (open source) on the S23. The user installs it; I never download apps.
 
 Constraints carried over: features never depend on each other; Gradle version catalog for every dependency; Glance cannot blur, so glass tokens map to a translucent tint + 1 px border (`GLANCE_ALPHA` light 0.6 `#FFFFFF`, dark 0.7 `#1A1C22`, `glass/border`); commit + push after each step; test on the real S23; perf work stays closed.
 
@@ -53,7 +53,7 @@ Constraints carried over: features never depend on each other; Gradle version ca
   - `res/xml/appfilter.xml` + `assets/appfilter.xml` (`<item component="ComponentInfo{pkg/activity}" drawable="ic_<key>"/>`), `res/xml/drawable.xml` (all icons, for pickers).
 - `:iconpack` module: application convention plugin, no dependencies; manifest declares the ADW/Nova/Lawnchair icon-pack intent filters (`org.adw.launcher.THEMES`, `com.novalauncher.THEME`, `com.teslacoilsw.launcher.THEME`, `com.anddoes.launcher.THEME`, `com.gau.go.launcherex.theme`, `com.fede.launcher.THEME_ICONPACK`) on a tiny info activity ("Apply Saber Icons in your launcher's settings"). Debug-signed like the launcher.
 - JVM unit test in `:iconpack`: parses `appfilter.xml`, checks every `drawable` exists and every component is well formed.
-- Risk: if Nova ignores vector/adaptive drawables from packs, rasterise foregrounds to PNG at build time (fallback noted, only if needed).
+- Risk: if Lawnchair ignores vector/adaptive drawables from packs, rasterise foregrounds to PNG at build time (fallback noted, only if needed).
 
 ### 5. Docs and wrap-up
 - `docs/architecture.md`: `:core:widgetdata`, Glance pipeline (snapshot reads, TextClock, worker + exempt broadcasts, permission activity), icon-pack generation; `.claude/rules/launcher-manifest.md`: widget receivers, worker, permission activity, iconpack filters; CLAUDE.md command list gains `node tools/dump-components.mjs` / `build-iconpack.mjs` and `./gradlew :iconpack:installDebug`. M3 handoff → done; open-items list for M4.
@@ -67,5 +67,5 @@ Constraints carried over: features never depend on each other; Gradle version ca
 - Every step: `./gradlew assembleDebug testDebugUnitTest lintDebug` green (JAVA_HOME per CLAUDE.md, trim hook); moved tests still pass; step 4 adds the appfilter test.
 - Step 1 on the S23: home widgets unchanged (screenshot vs before), no crashes in `logcat -b crash`.
 - Steps 2–3 on the S23 without changing the default home: start One UI Home explicitly (`adb shell am start -n com.sec.android.app.launcher/.activities.LauncherActivity`), the user adds the Saber widgets from its widget picker, I screenshot each size; check clock ticks, alarm line, weather data, calendar Allow → grant flow, battery after the 15–30 min worker (or `adb shell cmd jobscheduler run` on the worker job), tap actions. Saber stays the default home throughout; the user removes the test widgets afterwards.
-- Step 4 (Lawnchair if Nova fails; same steps): user installs Nova; I run `node tools/dump-components.mjs` and `build-iconpack.mjs`, install `:iconpack`, start Nova explicitly (`am start` on its home activity), the user applies "Saber Icons" in Nova settings; screenshots show themed dock/drawer icons with Nova's shape mask; unmapped apps keep their own icons. `aapt2 dump xmltree` sanity check on the APK's appfilter.
+- Step 4: user installs Lawnchair; I run `node tools/dump-components.mjs` and `build-iconpack.mjs`, install `:iconpack`, start Lawnchair explicitly (`am start` on its home activity), the user applies "Saber Icons" in Lawnchair settings; screenshots show themed dock/drawer icons with Lawnchair's shape mask; unmapped apps keep their own icons. `aapt2 dump xmltree` sanity check on the APK's appfilter.
 - Before any on-device change to Saber's own layout/settings: back up and restore per memory `device-layout-backup`.

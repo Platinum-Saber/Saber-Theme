@@ -11,7 +11,7 @@
 - Perf work stays closed unless the user reopens it.
 
 ## Files
-- `docs/plans/m3-glance-iconpack.md` — approved M3 plan (steps 1–5, verification). User choices: Glance = Clock/Weather/Calendar/Battery/Alarm (no Media); components dumped from the S23; adaptive icons; icon pack checked in Nova first, Lawnchair if Nova fails (user installs it).
+- `docs/plans/m3-glance-iconpack.md` — approved M3 plan (steps 1–5, verification). User choices: Glance = Clock/Weather/Calendar/Battery/Alarm (no Media); components dumped from the S23; adaptive icons; icon pack checked in Lawnchair (user installs it; Nova dropped, likely unmaintained).
 - `docs/architecture.md` — current module graph (M3 modules shown dashed), widget system, icon system.
 - `feature/widgets/src/main/java/com/sabertheme/feature/widgets/` — sources, `WidgetState`, `WidgetViews.kt` (per-size layouts to mirror in Glance), `WidgetCatalog`.
 - `design/icons/glyphs.js`, `design/icons/packages.json`, `tools/build-icons.mjs` — icon source and generator.
