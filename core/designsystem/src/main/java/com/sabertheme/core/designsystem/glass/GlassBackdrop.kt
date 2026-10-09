@@ -37,11 +37,36 @@ class GlassBackdrop(
     companion object {
         private const val DOWNSAMPLE = 4
 
-        fun render(wallpaper: AuroraWallpaper, windowW: Int, windowH: Int, overscan: Int, density: Float): GlassBackdrop {
+        /** Photos darker than this mean luminance get the dark (light-text) theme. */
+        private const val DARK_PHOTO_LUMINANCE = 0.25f
+
+        fun render(wallpaper: AuroraWallpaper, windowW: Int, windowH: Int, overscan: Int, density: Float): GlassBackdrop =
+            render(windowW, windowH, overscan, density, darkOverride = wallpaper.dark) { canvas, w, h ->
+                paintAurora(canvas, wallpaper, w, h)
+            }
+
+        /** Centre-crops [photo] to the window; light/dark comes from its luminance. */
+        fun render(photo: Bitmap, windowW: Int, windowH: Int, overscan: Int, density: Float): GlassBackdrop =
+            render(windowW, windowH, overscan, density, darkOverride = null) { canvas, w, h ->
+                val scale = maxOf(w / photo.width, h / photo.height)
+                val dw = photo.width * scale
+                val dh = photo.height * scale
+                val dst = android.graphics.RectF((w - dw) / 2f, (h - dh) / 2f, (w + dw) / 2f, (h + dh) / 2f)
+                canvas.drawBitmap(photo, null, dst, Paint(Paint.FILTER_BITMAP_FLAG or Paint.DITHER_FLAG))
+            }
+
+        private fun render(
+            windowW: Int,
+            windowH: Int,
+            overscan: Int,
+            density: Float,
+            darkOverride: Boolean?,
+            paint: (Canvas, Float, Float) -> Unit,
+        ): GlassBackdrop {
             val w = windowW + 2 * overscan
             val h = windowH + 2 * overscan
             val full = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-            paintAurora(Canvas(full), wallpaper, w.toFloat(), h.toFloat())
+            paint(Canvas(full), w.toFloat(), h.toFloat())
 
             val sw = (w / DOWNSAMPLE).coerceAtLeast(1)
             val sh = (h / DOWNSAMPLE).coerceAtLeast(1)
@@ -57,16 +82,23 @@ class GlassBackdrop(
             }
             val palettePixels = IntArray(sw * sh)
             blurred.getValue(GlassMaterial.Regular.name).getPixels(palettePixels, 0, sw, 0, 0, sw, sh)
+            val palette = WallpaperPalette.from(palettePixels, sw, sh, w.toFloat(), h.toFloat())
 
             return GlassBackdrop(
                 wallpaper = full.asImageBitmap(),
                 overscan = overscan.toFloat(),
-                dark = wallpaper.dark,
+                dark = darkOverride ?: (palette.sample(0f, 0f, w.toFloat(), h.toFloat()).luminance < DARK_PHOTO_LUMINANCE),
                 blurred = blurred,
                 blurScale = sw.toFloat() / w,
-                palette = WallpaperPalette.from(palettePixels, sw, sh, w.toFloat(), h.toFloat()),
+                palette = palette,
             )
         }
+
+        /** Small sharp render of a bundled wallpaper, for pickers. */
+        fun auroraThumbnail(spec: AuroraWallpaper, width: Int, height: Int): Bitmap =
+            Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).also {
+                paintAurora(Canvas(it), spec, width.toFloat(), height.toFloat())
+            }
 
         /** Draws the Figma blob recipe, scaled to cover [w]x[h]. */
         private fun paintAurora(canvas: Canvas, spec: AuroraWallpaper, w: Float, h: Float) {

@@ -1,5 +1,6 @@
 package com.sabertheme.core.designsystem.glass
 
+import android.graphics.Bitmap
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -27,17 +28,34 @@ import kotlinx.coroutines.withContext
 class GlassEnvironment {
     var backdrop by mutableStateOf<GlassBackdrop?>(null)
 
-    /** Unit-ish direction pointing toward the virtual light, in screen space (y down). */
+    /** Direction toward the virtual light in screen space (y down), roughly unit length. */
     var light by mutableStateOf(DEFAULT_LIGHT)
 
-    /** Wallpaper offset in px; bounded by [GlassBackdrop.overscan]. */
-    var parallax by mutableStateOf(Offset.Zero)
+    /** Wallpaper shift from device tilt, in px. */
+    var tiltParallax by mutableStateOf(Offset.Zero)
 
-    /** 0..1 effect strength: user slider x power/thermal/idle policy. */
+    /** Wallpaper shift from pager scroll, in px. */
+    var pageParallax by mutableStateOf(Offset.Zero)
+
+    /** Total wallpaper offset in px, clamped to the backdrop's overscan. */
+    val parallax: Offset
+        get() {
+            val limit = backdrop?.overscan ?: 0f
+            val p = tiltParallax + pageParallax
+            return Offset(p.x.coerceIn(-limit, limit), p.y.coerceIn(-limit, limit))
+        }
+
+    /** 0..1 effect strength: user slider x power/thermal policy. */
     var intensity by mutableFloatStateOf(1f)
 
     /** "Remove animations" is on: springs snap, no sensors. */
     var reducedMotion by mutableStateOf(false)
+
+    /** Debug switches (Glass Lab). All on in normal use. */
+    var effects by mutableStateOf(GlassEffects())
+
+    /** Set by the effects controller; glass calls it on every touch. */
+    var onInteraction: () -> Unit = {}
 
     companion object {
         val DEFAULT_LIGHT = Offset(-0.38f, -0.92f)
@@ -45,21 +63,45 @@ class GlassEnvironment {
     }
 }
 
-val LocalGlassEnvironment = staticCompositionLocalOf { GlassEnvironment() }
+data class GlassEffects(
+    val refraction: Boolean = true,
+    val tilt: Boolean = true,
+    val press: Boolean = true,
+    val adaptiveTint: Boolean = true,
+)
 
-/** Renders [wallpaper] for the current window into [environment] off the main thread. */
-@Composable
-fun BackdropLoader(environment: GlassEnvironment, wallpaper: AuroraWallpaper) {
-    val size = LocalWindowInfo.current.containerSize
-    val density = LocalDensity.current.density
-    LaunchedEffect(environment, wallpaper, size, density) {
-        if (size.width == 0 || size.height == 0) return@LaunchedEffect
-        val overscan = (GlassEnvironment.OVERSCAN.value * density).toInt()
-        environment.backdrop = withContext(Dispatchers.Default) {
-            GlassBackdrop.render(wallpaper, size.width, size.height, overscan, density)
-        }
-    }
-}
+val LocalGlassEnvironment = staticCompositionLocalOf { GlassEnvironment() }
 
 @Composable
 fun rememberGlassEnvironment(): GlassEnvironment = remember { GlassEnvironment() }
+
+/** What to render as the wallpaper. [key] identifies it for caching. */
+sealed interface BackdropSource {
+    val key: String
+
+    data class Aurora(val spec: AuroraWallpaper) : BackdropSource {
+        override val key get() = spec.id
+    }
+
+    class Photo(override val key: String, val load: suspend () -> Bitmap?) : BackdropSource
+}
+
+/** Renders [source] for the current window into [environment] off the main thread. */
+@Composable
+fun BackdropLoader(environment: GlassEnvironment, source: BackdropSource) {
+    val size = LocalWindowInfo.current.containerSize
+    val density = LocalDensity.current.density
+    LaunchedEffect(environment, source.key, size, density) {
+        if (size.width == 0 || size.height == 0) return@LaunchedEffect
+        val overscan = (GlassEnvironment.OVERSCAN.value * density).toInt()
+        environment.backdrop = withContext(Dispatchers.Default) {
+            val photo = (source as? BackdropSource.Photo)?.load?.invoke()
+            if (photo != null) {
+                GlassBackdrop.render(photo, size.width, size.height, overscan, density).also { photo.recycle() }
+            } else {
+                val spec = (source as? BackdropSource.Aurora)?.spec ?: AuroraWallpaper.Night
+                GlassBackdrop.render(spec, size.width, size.height, overscan, density)
+            }
+        }
+    }
+}

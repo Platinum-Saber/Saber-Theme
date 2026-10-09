@@ -9,22 +9,41 @@ import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import com.sabertheme.core.designsystem.theme.GlassMaterial
 
-/** Liquid-glass container. The public API stays fixed whatever engine draws it. */
+/**
+ * Liquid-glass container. The public API stays fixed whatever engine draws it.
+ * When [onClick] or [onLongClick] is set, the glass answers touch: it
+ * compresses, blooms from the finger and ticks.
+ */
 @Composable
 fun GlassSurface(
     modifier: Modifier = Modifier,
     shape: GlassShape = GlassShape.Default,
     material: GlassMaterial = GlassMaterial.Regular,
+    pressState: GlassPressState? = null,
+    onClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    val interactive = onClick != null || onLongClick != null
+    val press = if (interactive) pressState ?: rememberGlassPressState() else pressState
+    val env = LocalGlassEnvironment.current
+    val view = LocalView.current
     Box(
         modifier
+            .then(
+                if (interactive && press != null) {
+                    Modifier.glassPress(press, view, { env.reducedMotion }, onClick, onLongClick)
+                } else {
+                    Modifier
+                },
+            )
             .dropShadow(shape.toComposeShape(), material.shadow())
-            .glassBackground(shape, material),
+            .glassBackground(shape, material, press),
         content = content,
     )
 }

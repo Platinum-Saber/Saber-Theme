@@ -18,3 +18,11 @@ paths:
   wallpapers; raise `tintAlpha` rather than adding shadows.
 - Glance (RemoteViews) cannot blur: map tokens to a translucent tint +
   1 px border instead.
+- **Draw-phase only:** tilt, parallax, press and intensity are snapshot
+  state in `GlassEnvironment` / `GlassPressState`; read them only in draw,
+  `graphicsLayer` or `Modifier.Node` draw code, never in composition.
+- Sensors run only while `EffectsPolicy` is Active (touched within 3 s,
+  resumed, no Power Saving, no thermal throttling, animations on). Check
+  with `adb shell dumpsys sensorservice` (Previous Registrations).
+- Every state change animates with a `GlassMotion` spring; pass
+  `env.reducedMotion` so "Remove animations" snaps.

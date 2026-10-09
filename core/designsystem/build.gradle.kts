@@ -10,6 +10,7 @@ android {
 dependencies {
     api(projects.core.model)
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.activity.compose)
     implementation(libs.compose.ui.graphics)
     implementation(libs.compose.ui.text.google.fonts)
     implementation(libs.androidx.lifecycle.runtime.compose)
