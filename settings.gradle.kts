@@ -24,5 +24,6 @@ include(
     ":core:data",
     ":core:designsystem",
     ":core:icons",
+    ":core:ui",
     ":feature:home",
 )

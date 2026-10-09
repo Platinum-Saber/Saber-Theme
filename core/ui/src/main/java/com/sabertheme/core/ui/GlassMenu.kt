@@ -1,4 +1,4 @@
-package com.sabertheme.feature.home
+package com.sabertheme.core.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
@@ -41,16 +41,16 @@ import com.sabertheme.core.designsystem.theme.Radius
 import com.sabertheme.core.designsystem.theme.Saber
 import com.sabertheme.core.designsystem.theme.Space
 
-internal data class MenuItem(val glyph: Int, val label: String, val enabled: Boolean = true, val onClick: () -> Unit)
+data class MenuItem(val glyph: Int, val label: String, val enabled: Boolean = true, val onClick: () -> Unit)
 
-internal data class MenuRequest(val anchor: Offset, val items: List<MenuItem>)
+data class MenuRequest(val anchor: Offset, val items: List<MenuItem>)
 
 /**
  * Thick-glass context menu (Figma ContextMenu, 232 wide) that morphs out of
  * [MenuRequest.anchor] and stays on screen.
  */
 @Composable
-internal fun GlassMenu(request: MenuRequest?, onDismiss: () -> Unit) {
+fun GlassMenu(request: MenuRequest?, onDismiss: () -> Unit) {
     val env = LocalGlassEnvironment.current
     val progress = remember { Animatable(0f) }
     var shown by remember { mutableStateOf<MenuRequest?>(null) }

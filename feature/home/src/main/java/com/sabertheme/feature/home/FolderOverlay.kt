@@ -35,6 +35,8 @@ import com.sabertheme.core.designsystem.theme.GlassMaterial
 import com.sabertheme.core.designsystem.theme.Radius
 import com.sabertheme.core.designsystem.theme.Saber
 import com.sabertheme.core.designsystem.theme.Space
+import com.sabertheme.core.ui.HomeAppIcon
+import com.sabertheme.core.ui.LauncherApp
 
 internal data class OpenFolder(val folder: HomeCell.Folder, val origin: Rect)
 
@@ -48,8 +50,8 @@ internal fun FolderOverlay(
     open: OpenFolder?,
     progress: Animatable<Float, *>,
     onDismiss: () -> Unit,
-    onLaunch: (HomeApp, Rect) -> Unit,
-    onAppMenu: (HomeApp, Rect, Offset) -> Unit,
+    onLaunch: (LauncherApp, Rect) -> Unit,
+    onAppMenu: (LauncherApp, Rect, Offset) -> Unit,
 ) {
     val env = LocalGlassEnvironment.current
     var shown by remember { mutableStateOf<OpenFolder?>(null) }

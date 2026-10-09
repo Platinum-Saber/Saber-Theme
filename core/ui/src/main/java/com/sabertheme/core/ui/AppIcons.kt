@@ -1,4 +1,4 @@
-package com.sabertheme.feature.home
+package com.sabertheme.core.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -30,25 +30,25 @@ import com.sabertheme.core.designsystem.theme.Radius
 import com.sabertheme.core.designsystem.theme.Saber
 import com.sabertheme.core.icons.AppGlyphIcon
 
-internal val CELL_WIDTH = 72.dp
-internal val TILE_SIZE = 56.dp
-internal val CELL_HEIGHT = 96.dp
+val CELL_WIDTH = 72.dp
+val TILE_SIZE = 56.dp
+val CELL_HEIGHT = 96.dp
 
 /** Window bounds of a node, kept outside snapshot state (only read on tap). */
 @Stable
-internal class BoundsRef {
+class BoundsRef {
     var rect: Rect = Rect.Zero
 }
 
 @Composable
-internal fun rememberBoundsRef() = remember { BoundsRef() }
+fun rememberBoundsRef() = remember { BoundsRef() }
 
-internal fun Modifier.trackBounds(ref: BoundsRef) = onGloballyPositioned { ref.rect = it.boundsInWindow() }
+fun Modifier.trackBounds(ref: BoundsRef) = onGloballyPositioned { ref.rect = it.boundsInWindow() }
 
 /** Glass squircle holding one glyph (Figma IconTile, Style=Tile). */
 @Composable
-internal fun AppTile(
-    app: HomeApp,
+fun AppTile(
+    app: LauncherApp,
     modifier: Modifier = Modifier,
     size: Dp = TILE_SIZE,
     onClick: ((Rect) -> Unit)?,
@@ -68,8 +68,8 @@ internal fun AppTile(
 
 /** Home-grid cell: tile + label (Figma AppIcon). */
 @Composable
-internal fun HomeAppIcon(
-    app: HomeApp,
+fun HomeAppIcon(
+    app: LauncherApp,
     onClick: (Rect) -> Unit,
     onLongClick: (Rect, Offset) -> Unit,
     modifier: Modifier = Modifier,
@@ -84,7 +84,7 @@ internal fun HomeAppIcon(
 }
 
 @Composable
-internal fun IconLabel(text: String) {
+fun IconLabel(text: String) {
     BasicText(
         text,
         style = Saber.type.captionIcon.copy(color = Saber.colors.textPrimary, textAlign = TextAlign.Center),
@@ -96,8 +96,9 @@ internal fun IconLabel(text: String) {
 
 /** Closed folder: 2x2 preview of the first four glyphs on a glass tile. */
 @Composable
-internal fun FolderIcon(
-    folder: HomeCell.Folder,
+fun FolderIcon(
+    name: String,
+    apps: List<LauncherApp>,
     onOpen: (Rect) -> Unit,
     modifier: Modifier = Modifier,
     tileModifier: Modifier = Modifier,
@@ -106,13 +107,13 @@ internal fun FolderIcon(
     Column(modifier.width(CELL_WIDTH), horizontalAlignment = Alignment.CenterHorizontally) {
         Spacer(Modifier.height(2.dp))
         GlassSurface(
-            tileModifier.size(TILE_SIZE).trackBounds(bounds).semantics { contentDescription = "Folder ${folder.name}" },
+            tileModifier.size(TILE_SIZE).trackBounds(bounds).semantics { contentDescription = "Folder $name" },
             shape = GlassShape.Rounded(Radius.icon),
             material = GlassMaterial.Regular,
             onClick = { onOpen(bounds.rect) },
         ) {
             Column(Modifier.align(Alignment.Center), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                folder.apps.take(4).chunked(2).forEach { pair ->
+                apps.take(4).chunked(2).forEach { pair ->
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         pair.forEach { AppGlyphIcon(it.icon, Saber.colors.glyph, size = 14.dp) }
                     }
@@ -120,6 +121,6 @@ internal fun FolderIcon(
             }
         }
         Spacer(Modifier.height(6.dp))
-        IconLabel(folder.name)
+        IconLabel(name)
     }
 }

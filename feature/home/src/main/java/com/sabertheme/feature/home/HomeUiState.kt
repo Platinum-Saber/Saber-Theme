@@ -1,19 +1,13 @@
 package com.sabertheme.feature.home
 
 import androidx.compose.runtime.Immutable
-import com.sabertheme.core.icons.AppIconSource
-import com.sabertheme.core.model.AppEntry
 import com.sabertheme.core.model.HomeItem
-
-@Immutable
-data class HomeApp(val entry: AppEntry, val icon: AppIconSource) {
-    val key get() = entry.key
-}
+import com.sabertheme.core.ui.LauncherApp
 
 @Immutable
 sealed interface HomeCell {
-    data class App(val app: HomeApp) : HomeCell
-    data class Folder(val id: String, val name: String, val apps: List<HomeApp>) : HomeCell
+    data class App(val app: LauncherApp) : HomeCell
+    data class Folder(val id: String, val name: String, val apps: List<LauncherApp>) : HomeCell
     data class Widget(val widget: HomeItem.Widget) : HomeCell
 }
 
@@ -23,6 +17,6 @@ data class PlacedCell(val cell: HomeCell, val col: Int, val row: Int, val spanX:
 
 @Immutable
 data class HomeUiState(
-    val dock: List<HomeApp>,
+    val dock: List<LauncherApp>,
     val pages: List<List<PlacedCell>>,
 )

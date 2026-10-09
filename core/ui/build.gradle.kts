@@ -5,19 +5,16 @@ plugins {
 }
 
 android {
-    namespace = "com.sabertheme.feature.home"
+    namespace = "com.sabertheme.core.ui"
 }
 
 dependencies {
-    implementation(projects.core.model)
+    api(projects.core.model)
+    api(projects.core.icons)
     implementation(projects.core.data)
     implementation(projects.core.designsystem)
-    implementation(projects.core.icons)
-    implementation(projects.core.ui)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.lifecycle.runtime.compose)
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.kotlinx.coroutines.core)
 }

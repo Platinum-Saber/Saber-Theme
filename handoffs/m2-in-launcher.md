@@ -1,6 +1,6 @@
 # Handoff: Milestone 2 — in-launcher experience
 
-**Goal:** Build M2 per `docs/plans/m2-in-launcher.md`; steps 1–2 done, continue at step 3 (`:core:ui` extraction), then widgets, drawer/search, edit mode, settings.
+**Goal:** Build M2 per `docs/plans/m2-in-launcher.md`; steps 1–3 done, continue at step 4 (native widgets), then, drawer/search, edit mode, settings.
 
 ## Decisions
 - M2 = drawer/search, native widgets, edit mode, settings. Glance widgets + icon-pack APK are M3.
@@ -19,8 +19,9 @@
 - `core/model/.../HomeLayoutCodec.kt` — v2 format + v1 migration.
 - `core/data/.../AppRepository.kt` — `installed: Flow<Installed(apps, lockedProfiles)>`, `apps`, launch, app info.
 - `feature/home/.../HomeScreen.kt` — pager, positioned `HomePage` Layout + `HomeGrid`, `WidgetPlaceholder`, dock, menus.
-- `feature/home/.../HomeIcons.kt`, `GlassMenu.kt` — move to `:core:ui` in step 3.
-- `feature/home/.../HomeViewModel.kt` — UI state mapping, icon resolution (`resolveSuspending` → `AppIconResolver` in step 3).
+- `core/ui/.../AppIcons.kt` (AppTile, HomeAppIcon, FolderIcon(name, apps), BoundsRef, cell metrics), `GlassMenu.kt`, `LauncherApp` (was `HomeApp`).
+- `core/ui/.../AppIconResolver.kt` (singleton icon cache, `app(entry)`), `AppLauncher.kt` (clip-reveal launch, app info) — use both in the drawer.
+- `feature/home/.../HomeViewModel.kt` — UI state mapping; delegates icons/launch to `:core:ui`.
 - `core/designsystem/.../glass/GlassProgram.kt` — pooled AGSL shaders; `core/icons/.../GlyphImages.kt` — cached glyph bitmaps.
 
 ## State
@@ -29,4 +30,4 @@
 - Untested: fresh-install default layout on device (unit-tested only; don't `pm clear` the user's phone); locked-profile behaviour on device; photo-wallpaper import.
 
 ## Next step
-M2 step 3: create `:core:ui` (deps: designsystem, icons, data, model), move `AppTile`/`HomeAppIcon`/`FolderIcon`/`BoundsRef`/`IconLabel` and `GlassMenu` from `feature/home`, add `AppIconResolver` (singleton icon cache from `HomeViewModel.resolveSuspending`) and `AppLauncher` (clip-reveal + `AppRepository.launch`). No behaviour change; build, test, lint, commit, push.
+M2 step 4 (`docs/plans/m2-in-launcher.md`): `:feature:widgets` — native AppWidgetHost, wire into `HomeScreen(widgetContent = …)` from `:app`. Then re-check jank once (report only).

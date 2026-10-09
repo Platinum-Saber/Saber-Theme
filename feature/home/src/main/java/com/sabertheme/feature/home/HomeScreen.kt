@@ -1,6 +1,5 @@
 package com.sabertheme.feature.home
 
-import android.app.ActivityOptions
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -61,9 +60,18 @@ import com.sabertheme.core.icons.AppGlyph
 import com.sabertheme.core.icons.UiGlyph
 import com.sabertheme.core.model.HomeItem
 import com.sabertheme.core.model.HomeLayout
+import com.sabertheme.core.ui.AppTile
+import com.sabertheme.core.ui.CELL_HEIGHT
+import com.sabertheme.core.ui.CELL_WIDTH
+import com.sabertheme.core.ui.FolderIcon
+import com.sabertheme.core.ui.GlassMenu
+import com.sabertheme.core.ui.HomeAppIcon
+import com.sabertheme.core.ui.LauncherApp
+import com.sabertheme.core.ui.MenuItem
+import com.sabertheme.core.ui.MenuRequest
+import com.sabertheme.core.ui.TILE_SIZE
 import kotlin.math.abs
 import kotlin.math.roundToInt
-import android.graphics.Rect as AndroidRect
 
 private val SIDE = 18.dp
 private val WIDGET_GAP = 12.dp
@@ -100,18 +108,16 @@ fun HomeScreen(
         }
     }
 
-    fun launch(app: HomeApp, bounds: Rect) {
+    fun launch(app: LauncherApp, bounds: Rect) {
         openFolder = null
-        val r = bounds.toAndroid()
-        val options = ActivityOptions.makeClipRevealAnimation(view, r.left, r.top, r.width(), r.height()).toBundle()
-        viewModel.launch(app.key, r, options)
+        viewModel.launch(app.key, view, bounds)
     }
 
-    fun appMenu(app: HomeApp, bounds: Rect, at: Offset) {
+    fun appMenu(app: LauncherApp, bounds: Rect, at: Offset) {
         menu = MenuRequest(
             anchor = at,
             items = listOf(
-                MenuItem(AppGlyph.SETTINGS.drawable, "App info") { viewModel.openAppInfo(app.key, bounds.toAndroid()) },
+                MenuItem(AppGlyph.SETTINGS.drawable, "App info") { viewModel.openAppInfo(app.key, bounds) },
             ),
         )
     }
@@ -169,8 +175,8 @@ private fun HomePage(
     cells: List<PlacedCell>,
     velocity: () -> Float,
     widgetContent: @Composable (HomeItem.Widget, Modifier) -> Unit,
-    onLaunch: (HomeApp, Rect) -> Unit,
-    onAppMenu: (HomeApp, Rect, Offset) -> Unit,
+    onLaunch: (LauncherApp, Rect) -> Unit,
+    onAppMenu: (LauncherApp, Rect, Offset) -> Unit,
     onOpenFolder: (HomeCell.Folder, Rect) -> Unit,
 ) {
     val stretch = Modifier.glassStretch { Offset(velocity(), 0f) }
@@ -185,7 +191,7 @@ private fun HomePage(
                             onLongClick = { bounds, at -> onAppMenu(cell.app, bounds, at) },
                             tileModifier = stretch,
                         )
-                        is HomeCell.Folder -> FolderIcon(cell, onOpen = { onOpenFolder(cell, it) }, tileModifier = stretch)
+                        is HomeCell.Folder -> FolderIcon(cell.name, cell.apps, onOpen = { onOpenFolder(cell, it) }, tileModifier = stretch)
                         is HomeCell.Widget -> widgetContent(cell.widget, stretch)
                     }
                 }
@@ -304,10 +310,10 @@ private fun SearchPill(modifier: Modifier = Modifier) {
 
 @Composable
 private fun Dock(
-    apps: List<HomeApp>,
+    apps: List<LauncherApp>,
     modifier: Modifier = Modifier,
-    onLaunch: (HomeApp, Rect) -> Unit,
-    onAppMenu: (HomeApp, Rect, Offset) -> Unit,
+    onLaunch: (LauncherApp, Rect) -> Unit,
+    onAppMenu: (LauncherApp, Rect, Offset) -> Unit,
 ) {
     GlassSurface(
         modifier.fillMaxWidth().height(80.dp),
@@ -352,6 +358,3 @@ private fun rememberPageVelocity(pager: PagerState): Animatable<Float, *> {
     }
     return velocity
 }
-
-private fun Rect.toAndroid() = AndroidRect(left.roundToInt(), top.roundToInt(), right.roundToInt(), bottom.roundToInt())
-

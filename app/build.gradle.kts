@@ -33,6 +33,7 @@ dependencies {
     implementation(projects.core.data)
     implementation(projects.core.designsystem)
     implementation(projects.core.icons)
+    implementation(projects.core.ui)
     implementation(projects.feature.home)
 
     implementation(libs.androidx.core.ktx)
