@@ -5,6 +5,12 @@ screens. Running it again is safe: it deletes only the nodes it created and
 rebuilds them. It reuses the variables, text/effect styles and wallpapers
 already in the file, and creates any that are missing.
 
+## Source
+`dist/code.js` is generated: edit `src/code.js` (builder) and
+`design/icons/glyphs.js` (glyph data, shared with `:core:icons`), then run
+`node tools/build-plugin.mjs`. After glyph or `design/icons/packages.json`
+changes also run `node tools/build-icons.mjs` to regenerate the drawables.
+
 ## Run
 1. Open the Figma **desktop** app (development plugins need it).
 2. Open the "Saber-Theme" file.
