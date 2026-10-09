@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.DpOffset
@@ -43,7 +44,12 @@ fun GlassSurface(
                 },
             )
             .dropShadow(shape.toComposeShape(), material.shadow())
-            .glassBackground(shape, material, press),
+            // Glass and content get their own layers: parallax moves the
+            // backdrop origin every paging frame, and only the glass rect
+            // should re-record, not the shadow or the glyph.
+            .graphicsLayer()
+            .glassBackground(shape, material, press)
+            .graphicsLayer(),
         content = content,
     )
 }

@@ -95,6 +95,7 @@ fun BackdropLoader(environment: GlassEnvironment, source: BackdropSource) {
         if (size.width == 0 || size.height == 0) return@LaunchedEffect
         val overscan = (GlassEnvironment.OVERSCAN.value * density).toInt()
         environment.backdrop = withContext(Dispatchers.Default) {
+            GlassPrograms.prewarm()
             val photo = (source as? BackdropSource.Photo)?.load?.invoke()
             if (photo != null) {
                 GlassBackdrop.render(photo, size.width, size.height, overscan, density).also { photo.recycle() }

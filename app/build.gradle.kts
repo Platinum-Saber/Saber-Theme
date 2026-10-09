@@ -22,6 +22,7 @@ android {
             initWith(getByName("release"))
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += "release"
+            proguardFile("benchmark-rules.pro")
         }
     }
     buildFeatures { buildConfig = true }

@@ -1,15 +1,11 @@
 package com.sabertheme.core.designsystem.glass
 
-import android.graphics.Bitmap
-import android.graphics.BitmapShader
 import android.graphics.RuntimeShader
-import android.graphics.Shader
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -78,10 +74,7 @@ private class GlassNode(
     CompositionLocalConsumerModifierNode {
 
     private var windowPos = Offset.Unspecified
-    private var shader: RuntimeShader? = null
-    private var brush: ShaderBrush? = null
-    private var boundBitmap: Bitmap? = null
-    private var uniforms: UniformWriter? = null
+    private var program: GlassProgram? = null
 
     // Adaptive tint cache: recomputed only when the sampled region changes.
     private var tintKey = 0L
@@ -98,10 +91,8 @@ private class GlassNode(
     }
 
     override fun onDetach() {
-        shader = null
-        brush = null
-        boundBitmap = null
-        uniforms = null
+        program?.let(GlassPrograms::recycle)
+        program = null
     }
 
     override fun ContentDrawScope.draw() {
@@ -112,18 +103,11 @@ private class GlassNode(
             drawContent()
             return
         }
-        val rs = shader ?: RuntimeShader(GLASS_AGSL).also {
-            shader = it
-            brush = ShaderBrush(it)
-        }
-        val bitmap = backdrop.blurredFor(material)
-        if (bitmap !== boundBitmap) {
-            rs.setInputShader("backdrop", BitmapShader(bitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP).apply {
-                filterMode = BitmapShader.FILTER_MODE_LINEAR
-            })
-            boundBitmap = bitmap
+        val prog = program ?: GlassPrograms.obtain().also {
+            program = it
             tintKey = 0L
         }
+        if (prog.bind(backdrop.blurredFor(material))) tintKey = 0L
 
         val effects = env.effects
         val intensity = env.intensity
@@ -132,7 +116,7 @@ private class GlassNode(
         val originX = windowPos.x + backdrop.overscan - parallax.x
         val originY = windowPos.y + backdrop.overscan - parallax.y
 
-        val u = uniforms ?: UniformWriter(rs).also { uniforms = it }
+        val u = prog.uniforms
         u.set("size", size.width, size.height)
         u.set("radius", shape.radiusPx(size.width, size.height, density))
         u.set("origin", originX, originY)
@@ -153,7 +137,7 @@ private class GlassNode(
         }
         u.setColor("bloomColor", Color.White, BLOOM_ALPHA * intensity)
 
-        drawRect(brush!!)
+        drawRect(prog.brush)
         drawContent()
     }
 
@@ -192,7 +176,7 @@ private class GlassNode(
  * crosses JNI and invalidates the native shader, and while paging most of
  * them are constant.
  */
-private class UniformWriter(private val shader: RuntimeShader) {
+internal class UniformWriter(private val shader: RuntimeShader) {
     private val last = HashMap<String, FloatArray>()
 
     private fun changed(name: String, a: Float, b: Float, c: Float, d: Float, n: Int): Boolean {

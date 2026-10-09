@@ -1,20 +1,22 @@
 package com.sabertheme.core.icons
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -25,12 +27,13 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun AppGlyphIcon(source: AppIconSource, tint: Color, modifier: Modifier = Modifier, size: Dp = 24.dp) {
     when (source) {
-        is AppIconSource.Glyph -> Image(
-            painter = painterResource(source.glyph.drawable),
-            contentDescription = null,
-            colorFilter = ColorFilter.tint(tint),
-            modifier = modifier.size(size),
-        )
+        is AppIconSource.Glyph -> {
+            val context = LocalContext.current
+            val px = with(LocalDensity.current) { size.roundToPx() }
+            val image = remember(source.glyph, px) { GlyphImages.get(context, source.glyph.drawable, px) }
+            val filter = remember(tint) { ColorFilter.tint(tint) }
+            Spacer(modifier.size(size).drawBehind { drawImage(image, colorFilter = filter) })
+        }
         is AppIconSource.Monochrome -> {
             val drawable = remember(source) { source.drawable.mutate() }
             Canvas(modifier.size(size)) {

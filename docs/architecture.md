@@ -101,8 +101,24 @@ The main technical risk; constraints live in `.claude/rules/glass-rendering.md`.
    adaptive tint): p50 7 ms / p90 9 ms, jank 2.3%. Every glass node must
    re-record each frame while paging (its backdrop offset changes), so
    per-node CPU cost is the budget; uniforms are pushed only on change and
-   tint solves are cached. Remaining jank is mostly page composition on
-   swipe; target < 1% is open.
+   tint solves are cached.
+   M2 step 1 (Perfetto + simpleperf, same 7-page layout, 12 swipes):
+   - Compiled shaders come from a process-wide pool (`GlassPrograms`,
+     pre-warmed with 56 off the main thread in `BackdropLoader`); compiling
+     AGSL per new tile cost ~0.5 ms each on a page's first frame.
+   - Glyphs draw from `GlyphImages` (rasterised once per size) instead of
+     `painterResource` vectors, which re-rasterised per composition.
+   - `GlassSurface` layers: `dropShadow → [layer] glass → [layer] content`,
+     so the per-frame parallax re-record touches only the glass rect.
+   - Result: p50 5–6 ms / p90 7–8 ms / p99 10–13 ms, GPU 3 ms, jank
+     1.0–1.3% (was 2.2%). Every remaining slow frame is the first frame of a
+     swipe, when the incoming page records for the first time (~7.5 ms for
+     20 cells, ~350 µs each, spread across Compose node draw). Keeping
+     neighbours composed (`beyondViewportPageCount = 1`) made it worse
+     (1.9%): the spike moves to mid-swipe and off-screen glass re-records.
+     Re-measure on the 2-page curated home (step 2) and with widgets (step 4).
+   - The `benchmark` build is profileable and not obfuscated
+     (`app/src/benchmark`, `benchmark-rules.pro`) for `simpleperf --app`.
 6. Glance fallback maps the same tokens to a translucent tinted rounded
    background with a 1 px border.
 
