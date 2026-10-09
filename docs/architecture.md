@@ -77,8 +77,12 @@ The main technical risk; constraints live in `.claude/rules/glass-rendering.md`.
    specular rim highlight, tint and border.
 4. Material tokens: `blurRadius`, `tint`, `tintAlpha`, `refraction`,
    `highlight`, `borderAlpha`; presets `thin`, `regular`, `thick`.
-5. Spike before committing: Kyant `backdrop` vs Haze vs own shader, judged by
-   frame time on the S23 (120 Hz target, under 8 ms per frame).
+5. Engine: **own AGSL shader** (spike 2026-10-09, `benchmark` build on the
+   S23, 20 Thin tiles + Regular widget + Thick dock, pager swipes):
+   frame p50 5 ms / p90 6 ms / p95 6 ms, GPU 3 ms, jank 1.5% (slow UI
+   thread frames; target < 1% is a home-screen task). Kyant `backdrop` was
+   not benchmarked: it records and blurs content live each frame, which the
+   cached-backdrop rule rules out. Revisit only for live overlay blur.
 6. Glance fallback maps the same tokens to a translucent tinted rounded
    background with a 1 px border.
 
