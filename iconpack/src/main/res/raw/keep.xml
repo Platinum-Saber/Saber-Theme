@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icons are looked up by name from appfilter.xml, never referenced from code. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_*,@xml/appfilter,@xml/drawable" />

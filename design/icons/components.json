@@ -1,0 +1,137 @@
+{
+  "phone": [
+    "com.samsung.android.dialer/com.samsung.android.dialer.DialtactsActivity"
+  ],
+  "messages": [
+    "com.google.android.apps.messaging/com.google.android.apps.messaging.ui.ConversationListActivity",
+    "com.samsung.android.messaging/com.android.mms.ui.ConversationComposer"
+  ],
+  "camera": [
+    "com.sec.android.app.camera/com.sec.android.app.camera.Camera"
+  ],
+  "gallery": [
+    "com.google.android.apps.photos/com.google.android.apps.photos.home.HomeActivity",
+    "com.sec.android.gallery3d/com.samsung.android.gallery.app.activity.GalleryActivity"
+  ],
+  "browser": [
+    "com.brave.browser/com.google.android.apps.chrome.Main",
+    "com.microsoft.emmx/com.microsoft.ruby.Main",
+    "com.sec.android.app.sbrowser/com.sec.android.app.sbrowser.SBrowserMainActivity",
+    "org.mozilla.firefox/org.mozilla.firefox.App"
+  ],
+  "settings": [
+    "com.android.settings/com.android.settings.Settings"
+  ],
+  "store": [
+    "com.android.vending/com.android.vending.AssetBrowserActivity"
+  ],
+  "mail": [
+    "com.google.android.gm/com.google.android.gm.ConversationListActivityGmail",
+    "com.microsoft.office.outlook/com.microsoft.office.outlook.MainActivity"
+  ],
+  "maps": [
+    "com.google.android.apps.maps/com.google.android.maps.MapsActivity"
+  ],
+  "video": [
+    "com.google.android.videos/com.google.android.videos.GoogleTvEntryPoint",
+    "com.google.android.youtube/com.google.android.youtube.app.honeycomb.Shell$HomeActivity"
+  ],
+  "chat": [
+    "com.whatsapp/com.whatsapp.Main"
+  ],
+  "music": [
+    "com.google.android.apps.youtube.music/com.google.android.apps.youtube.music.activities.MusicActivity",
+    "com.sec.android.app.music/com.sec.android.app.music.common.activity.MusicMainActivity",
+    "com.spotify.music/com.spotify.music.MainActivity"
+  ],
+  "calendar": [
+    "com.google.android.calendar/com.android.calendar.AllInOneActivity",
+    "com.samsung.android.calendar/com.samsung.android.app.calendar.activity.MainActivity"
+  ],
+  "clock": [
+    "com.sec.android.app.clockpackage/com.sec.android.app.clockpackage.ClockPackage"
+  ],
+  "calculator": [
+    "advanced.scientific.calculator.calc991.plus/advanced.scientific.calculator.calc991.plus.main.GlobalClustererRowShapeEmphasizerActivity",
+    "com.sec.android.app.popupcalculator/com.sec.android.app.popupcalculator.Calculator"
+  ],
+  "files": [
+    "com.sec.android.app.myfiles/com.sec.android.app.myfiles.ui.MainActivity"
+  ],
+  "notes": [
+    "com.samsung.android.app.notes/com.samsung.android.app.notes.memolist.MemoListActivity"
+  ],
+  "contacts": [
+    "com.samsung.android.app.contacts/com.samsung.android.contacts.contactslist.PeopleActivity"
+  ],
+  "weather": [
+    "com.sec.android.daemonapp/com.samsung.android.weather.app.AppLauncherActivity"
+  ],
+  "instagram": [
+    "com.instagram.android/com.instagram.android.activity.MainTabActivity"
+  ],
+  "facebook": [
+    "com.facebook.katana/com.facebook.katana.LoginActivity"
+  ],
+  "telegram": [
+    "org.telegram.messenger/org.telegram.messenger.DefaultIcon"
+  ],
+  "netflix": [
+    "com.netflix.mediaclient/com.netflix.mediaclient.ui.launch.UIWebViewActivity"
+  ],
+  "discord": [
+    "com.discord/com.discord.main.MainDefault"
+  ],
+  "health": [
+    "com.hevy/com.hevy.MainActivity",
+    "com.sec.android.app.shealth/com.samsung.android.app.shealth.home.HomeMainActivity"
+  ],
+  "wallet": [
+    "com.samsung.android.spay/com.samsung.android.spay.ui.SpayMainActivity"
+  ],
+  "shop": [
+    "com.sec.android.app.samsungapps/com.sec.android.app.samsungapps.SamsungAppsMainActivity"
+  ],
+  "recorder": [
+    "com.sec.android.app.voicenote/com.sec.android.app.voicenote.main.VNMainActivity"
+  ],
+  "drive": [
+    "com.google.android.apps.docs/com.google.android.apps.docs.app.NewMainProxyActivity"
+  ],
+  "work": [
+    "com.linkedin.android/com.linkedin.android.authenticator.LaunchActivityDefault",
+    "com.microsoft.teams/com.microsoft.skype.teams.Launcher"
+  ],
+  "translate": [
+    "com.google.android.apps.translate/com.google.android.apps.translate.TranslateActivity"
+  ],
+  "scanner": [
+    "com.intsig.camscanner/com.intsig.camscanner.mainmenu.mainactivity.MainActivity"
+  ],
+  "home": [
+    "com.samsung.android.oneconnect/com.samsung.android.oneconnect.ui.SCMainActivity"
+  ],
+  "ride": [
+    "com.pickme.passenger/com.pickme.passenger.MainActivity",
+    "com.ubercab/com.ubercab.presidio.app.core.root.RootActivity"
+  ],
+  "bank": [
+    "com.bankofceylon.flex/lk.boc.bapp.MainActivity",
+    "com.ofss.fcdb.mobile.android.phone.boc.launcher/com.ofss.fcdb.mobile.android.phone.boc.launcher.LauncherActivity"
+  ],
+  "cart": [
+    "com.alibaba.aliexpresshd/com.aliexpress.app.FirstActivity",
+    "com.amazon.mShop.android.shopping/com.amazon.mShop.home.HomeActivity",
+    "com.daraz.android/com.lazada.activities.EnterActivity",
+    "com.einnovation.temu/com.baogong.splash.activity.MainFrameActivity"
+  ],
+  "tasks": [
+    "com.microsoft.todos/com.microsoft.todos.ui.LaunchActivity"
+  ],
+  "watch": [
+    "com.samsung.android.app.watchmanager/com.samsung.android.app.watchmanager.setupwizard.SetupWizardWelcomeActivity"
+  ],
+  "compass": [
+    "com.android.chrome/com.google.android.apps.chrome.Main"
+  ]
+}

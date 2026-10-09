@@ -31,4 +31,5 @@ include(
     ":feature:settings",
     ":feature:widgets",
     ":widgets-glance",
+    ":iconpack",
 )

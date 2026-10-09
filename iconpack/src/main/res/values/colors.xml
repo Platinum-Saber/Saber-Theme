@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Opaque Glance dark fill (TintDark in core/designsystem Color.kt). -->
+    <color name="icon_bg">#FF1A1C22</color>
+</resources>
