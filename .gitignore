@@ -20,3 +20,5 @@ keystore.properties
 # Claude Code
 .claude/logs/
 .claude/settings.local.json
+
+Lawnchair
