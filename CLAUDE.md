@@ -1,7 +1,7 @@
 # Saber-Theme
 
 Custom Android home-screen launcher, Kotlin + Jetpack Compose. Primary
-target: the owner's Samsung Galaxy S23 (One UI). Budget: keep this file
+target: the owner's Galaxy S23 (SM-S911B, Android 16 / API 36, One UI 8.5). Budget: keep this file
 under ~500 tokens; conditional guidance goes in `.claude/rules/`.
 
 ## Output
