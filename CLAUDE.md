@@ -9,6 +9,9 @@ under ~500 tokens; conditional guidance goes in `.claude/rules/`.
 - Plan mode for anything touching more than ~3 files; `/handoff` then
   `/clear` at the boundary. Broad sweeps go to the `explorer` agent.
 
+## Architecture
+See `docs/architecture.md` (modules, glass pipeline, widgets, icons).
+
 ## Commands
 Run from the repo root. Always pipe through the trim hook.
 - JDK: `JAVA_HOME=D:\Installations\Android\App\AndroidStudio\jbr` (Studio's bundled JDK 21; not set globally).
