@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Saber</string>
+    <color name="home_background">#FF0E1424</color>
+</resources>

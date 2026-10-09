@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The launcher draws its own wallpaper, so the system one stays hidden. -->
+    <style name="Theme.Saber.Home" parent="android:Theme.DeviceDefault.NoActionBar">
+        <item name="android:windowShowWallpaper">false</item>
+        <item name="android:windowBackground">@color/home_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">always</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
+        <item name="android:enforceStatusBarContrast">false</item>
+    </style>
+</resources>
