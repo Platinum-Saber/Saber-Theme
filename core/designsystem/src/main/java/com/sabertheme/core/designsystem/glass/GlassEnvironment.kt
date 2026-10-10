@@ -61,6 +61,18 @@ class GlassEnvironment {
     /** [System.nanoTime] of the last touch anywhere on Home (the mascot sleeps after a quiet spell). */
     @Volatile var lastInteractionNanos: Long = System.nanoTime()
 
+    /** Window position of the latest pointer on Home (the mascot looks at it); main thread only. */
+    var touchPosition: Offset = Offset.Unspecified
+
+    /** A finger is on Home now. */
+    var touchDown: Boolean = false
+
+    /** [System.nanoTime] of the latest finger-down; a new value means a new touch. */
+    var touchDownNanos: Long = 0L
+
+    /** Window position of [glassInteractionTracker]'s node. */
+    internal var trackerOrigin: Offset = Offset.Zero
+
     companion object {
         val DEFAULT_LIGHT = Offset(-0.38f, -0.92f)
         val OVERSCAN = 28.dp

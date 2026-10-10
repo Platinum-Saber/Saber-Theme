@@ -22,6 +22,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -116,15 +118,23 @@ fun GlassEffectsController(env: GlassEnvironment, userIntensity: Float) {
 }
 
 /** Reports touches to the effects policy without consuming them. Put on the root. */
-fun Modifier.glassInteractionTracker(env: GlassEnvironment): Modifier = pointerInput(env) {
-    awaitPointerEventScope {
-        while (true) {
-            awaitPointerEvent(PointerEventPass.Initial)
-            env.lastInteractionNanos = System.nanoTime()
-            env.onInteraction()
+fun Modifier.glassInteractionTracker(env: GlassEnvironment): Modifier = this
+    .onGloballyPositioned { env.trackerOrigin = it.positionInWindow() }
+    .pointerInput(env) {
+        awaitPointerEventScope {
+            while (true) {
+                val event = awaitPointerEvent(PointerEventPass.Initial)
+                val now = System.nanoTime()
+                env.lastInteractionNanos = now
+                event.changes.firstOrNull { it.pressed }?.let { finger ->
+                    env.touchPosition = finger.position + env.trackerOrigin
+                    if (!finger.previousPressed) env.touchDownNanos = now
+                }
+                env.touchDown = event.changes.any { it.pressed }
+                env.onInteraction()
+            }
         }
     }
-}
 
 /**
  * Game rotation vector -> virtual light direction and wallpaper parallax.

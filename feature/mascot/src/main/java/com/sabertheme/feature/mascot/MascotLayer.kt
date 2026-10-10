@@ -24,6 +24,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -37,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import com.sabertheme.core.designsystem.glass.LocalGlassEnvironment
 import com.sabertheme.feature.mascot.MascotBrain.Mood
 import kotlin.math.abs
+import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.roundToInt
@@ -51,6 +53,8 @@ private const val WALK_DP_PER_S = 48f
 private const val POSE_RATE = 14f
 private const val FRAME_MS = 22L
 private const val SAVER_FRAME_MS = 110L
+/** A finger this close to her chest gets a duel; farther away she points. */
+private const val NEAR_DP = 130f
 
 /**
  * Saber on the search bar. [anchor] is the search pill's window bounds; her
@@ -113,6 +117,11 @@ fun MascotLayer(
         var last = 0L
         var saver = false
         var saverCheckedAt = 0L
+        // The finger elsewhere on Home she reacts to (touches on her are pokes and drags).
+        var fingerDownNanos = env.touchDownNanos
+        var fingerOnHer = false
+        var fingerHeld = false
+        var lastMood = brain.mood
         // Always animating while Home shows her, capped near 30 fps (~8 fps in Power Saving).
         while (true) {
             delay(if (saver) SAVER_FRAME_MS else FRAME_MS)
@@ -156,14 +165,37 @@ fun MascotLayer(
             brain.awayFromHome = !physics.airborne && abs(physics.x - spot.x) > 2f * density.density
             val quietMs = (System.nanoTime() - env.lastInteractionNanos) / 1_000_000
             brain.tick(ms, quietMs, music())
+
+            val u = h / 140f // px per rig unit
+            // A quick tap can go down and up between two frames: a new touch counts for at least one.
+            val newTouch = env.touchDownNanos != fingerDownNanos
+            if (newTouch) {
+                fingerDownNanos = env.touchDownNanos
+                val p = env.touchPosition - origin
+                fingerOnHer = p.x in (physics.x - w / 2f)..(physics.x + w / 2f) && p.y in (physics.y - h)..physics.y
+            }
+            if ((env.touchDown || newTouch) && !fingerOnHer && env.touchPosition.isSpecified && currentAlpha() > 0.5f) {
+                val p = env.touchPosition - origin
+                val chest = Offset(physics.x, physics.y - 50f * u)
+                brain.finger((p - chest).getDistance() <= NEAR_DP * density.density, ms)
+                motion.aimAt(p, physics.x, physics.y, u, density.density)
+                fingerHeld = true
+            } else if (fingerHeld) {
+                fingerHeld = false
+                brain.fingerUp(ms)
+            }
+            if (brain.mood == Mood.Duel && lastMood != Mood.Duel) haptic(HapticFeedbackConstants.CLOCK_TICK)
+            lastMood = brain.mood
+
             motion.facing = when {
+                brain.mood == Mood.Duel || brain.mood == Mood.Point -> motion.aimFacing
                 brain.mood == Mood.Walking -> sign(spot.x - physics.x).takeIf { it != 0f } ?: motion.facing
                 brain.mood == Mood.Idle || brain.mood == Mood.Dancing || brain.mood == Mood.Sleeping -> 1f
                 else -> motion.facing
             }
             feet = Offset(physics.x, physics.y)
 
-            val target = basePose(brain, time)
+            val target = basePose(brain, time, motion)
             motion.blended = if (env.reducedMotion) target else motion.blended.approach(target, 1f - exp(-dt * POSE_RATE))
             // Lean with the phone: the tilt light moves off its rest direction.
             val tilt = if (env.effects.tilt) (env.light.x - GlassEnvironment.DEFAULT_LIGHT.x).coerceIn(-1f, 1f) else 0f
@@ -255,7 +287,7 @@ fun MascotLayer(
 }
 
 /** The pose each mood (and idle moment) blends toward; [Motion.animate] adds the moving parts. */
-private fun basePose(brain: MascotBrain, t: Float): Pose = when (brain.mood) {
+private fun basePose(brain: MascotBrain, t: Float, motion: Motion): Pose = when (brain.mood) {
     Mood.Idle, Mood.Walking, Mood.Wander, Mood.SoftLanding -> Pose.Neutral
     Mood.Surprised -> Pose.Surprised
     Mood.Pout -> Pose.Pout
@@ -266,6 +298,16 @@ private fun basePose(brain: MascotBrain, t: Float): Pose = when (brain.mood) {
     Mood.Dizzy -> Pose.Dizzy
     Mood.Sleeping -> Pose.Sleepy
     Mood.Dancing -> Pose.Dancing
+    // Aimed at the finger, eyes on it. The arm stops short of her face; the blade still points at it.
+    Mood.Duel -> Pose(
+        prop = Prop.Sword, armRight = motion.aimAngle.coerceAtMost(110f), swordAngle = 180f - motion.aimAngle, armLeft = 38f,
+        eyes = if ((t * 1.3f).toInt() % 3 == 2) Eyes.Happy else Eyes.Open, brows = Brows.Calm, mouth = Mouth.Smile, blush = 0.6f,
+        headTurn = 0.5f * motion.gazeX, gazeX = motion.gazeX, gazeY = motion.gazeY,
+    )
+    Mood.Point -> Pose(
+        prop = Prop.Point, armRight = motion.aimAngle.coerceAtMost(135f), armLeft = 10f, eyes = Eyes.Open, brows = Brows.Calm, mouth = Mouth.Open,
+        headTurn = 0.5f * motion.gazeX, gazeX = motion.gazeX, gazeY = motion.gazeY,
+    )
     Mood.Moment -> when (brain.moment) {
         MascotBrain.Moment.LookAround -> Pose.Neutral.copy(brows = Brows.Calm)
         MascotBrain.Moment.Stretch -> Pose.Neutral.copy(eyes = Eyes.Closed, mouth = Mouth.Open, armLeft = 165f, armRight = 165f, squash = 1.05f, lift = 1.5f)
@@ -286,8 +328,33 @@ private class Motion {
     var dragVx = 0f
     private var lean = 0f
 
+    // Where the finger is, from her: set by [aimAt].
+    var aimFacing = 1f
+    /** Right-arm angle (rig convention: 0 hangs down, 90 straight out, 180 up) toward the finger. */
+    var aimAngle = Pose.REST_ARM
+    /** Gaze toward the finger: x away from her along [aimFacing], y down. */
+    var gazeX = 0f
+    var gazeY = 0f
+    private var swing = 0f
+
+    /** Aims at [finger] (layer px) for a rig of [u] px per unit standing at [footX], [footY]. */
+    fun aimAt(finger: Offset, footX: Float, footY: Float, u: Float, density: Float) {
+        val dx = finger.x - footX
+        if (abs(dx) > 4f * density) aimFacing = sign(dx)
+        // Right shoulder (50 + 11.5, 87.5 in the 100 x 140 box, feet at 138), mirrored with her.
+        val shoulder = Offset(footX + aimFacing * 11.5f * u, footY - 50.5f * u)
+        val v = finger - shoulder
+        aimAngle = (atan2(abs(v.x), v.y) * 180f / PI.toFloat()).coerceIn(0f, 175f)
+        val g = finger - Offset(footX, footY - 83f * u) // eyes
+        val len = g.getDistance().coerceAtLeast(1f)
+        gazeX = abs(g.x) / len
+        gazeY = g.y / len
+    }
+
     fun animate(brain: MascotBrain, t: Float, tilt: Float): Pose {
         var p = blended
+        // Swings ease in so the first one doesn't snap.
+        swing += ((if (brain.mood == Mood.Duel) 1f else 0f) - swing) * 0.15f
         // Breathing and a lazy ahoge.
         p = p.copy(squash = p.squash * (1f + 0.012f * sin(t * 2.4f)), ahoge = p.ahoge + 5f * sin(t * 1.7f))
         // Blink for 130 ms every ~4 s (open eyes only).
@@ -327,6 +394,15 @@ private class Motion {
                     legLeft = 8f * sin(beat / 2f), legRight = -8f * sin(beat / 2f),
                 )
             }
+            Mood.Duel -> {
+                // Playful swishes across the finger: the blade flicks further than the arm.
+                val s = sin(t * 17f)
+                p = p.copy(
+                    armRight = p.armRight + 22f * s * swing, swordAngle = p.swordAngle - 48f * s * swing,
+                    bodyTilt = 4f * s * swing, lift = 2f * abs(sin(t * 8.5f)) * swing,
+                )
+            }
+            Mood.Point -> p = p.copy(armRight = p.armRight + 2.5f * sin(t * 4.5f))
             Mood.Sleeping -> p = p.copy(headTilt = p.headTilt + 3f * sin(t * 1.3f), squash = p.squash * (1f + 0.02f * sin(t * 1.3f)))
             Mood.Moment -> when (brain.moment) {
                 MascotBrain.Moment.LookAround -> p = p.copy(headTurn = 0.8f * sin(t * 1.8f), headTilt = 4f * sin(t * 0.9f))

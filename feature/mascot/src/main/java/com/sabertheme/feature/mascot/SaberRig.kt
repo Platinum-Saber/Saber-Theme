@@ -76,11 +76,14 @@ fun DrawScope.drawSaber(pose: Pose, time: Float, outfit: Outfit = Outfit.Armor) 
             skirt(outfit)
             torso(outfit)
             arm(left = true, angle = pose.armLeft, pose = pose, outfit = outfit)
-            arm(left = false, angle = pose.armRight, pose = pose, outfit = outfit)
+            // A raised sword or pointing arm would vanish behind her big head: draw it in front.
+            val armUp = pose.armRight > 95f && (pose.prop == Prop.Sword || pose.prop == Prop.Point)
+            if (!armUp) arm(left = false, angle = pose.armRight, pose = pose, outfit = outfit)
             withTransform({ rotate(pose.headTilt, pivot = Offset(50f, 82f)) }) {
                 head(pose, time)
             }
             neckwear(outfit, time)
+            if (armUp) arm(left = false, angle = pose.armRight, pose = pose, outfit = outfit)
             heldInFront(pose)
             if (pose.prop == Prop.ChinHand) {
                 withTransform({ rotate(pose.headTilt, pivot = Offset(50f, 82f)) }) { hand(Offset(55f, 80f), 3.4f) }
@@ -240,6 +243,11 @@ private fun DrawScope.arm(left: Boolean, angle: Float, pose: Pose, outfit: Outfi
             }
         }
         if (!left && pose.prop == Prop.Sword) sword(Offset(sx, sy + 19f), pose.swordAngle + angle)
+        if (!left && pose.prop == Prop.Point) {
+            // Index finger out along the arm.
+            val finger = path { moveTo(sx - 1.2f, sy + 19f); lineTo(sx + 1.2f, sy + 19f); lineTo(sx + 1f, sy + 25.5f); quadraticTo(sx, sy + 26.8f, sx - 1f, sy + 25.5f); close() }
+            shape(finger, if (outfit == Outfit.Armor) Silver else Skin, width = 0.8f)
+        }
         val shoulder = if (outfit == Outfit.Armor) Blue else White
         drawCircle(shoulder, 4.6f, Offset(sx, sy))
         drawCircle(Line, 4.6f, Offset(sx, sy), style = Stroke(1f))
@@ -414,8 +422,9 @@ private fun DrawScope.brows(brows: Brows, turn: Float) {
 private fun DrawScope.face(pose: Pose, turn: Float) {
     val dx = turn * 4f
     val eyeY = 60f
-    eye(39.5f + dx, eyeY, pose.eyes, leftEye = true)
-    eye(60.5f + dx, eyeY, pose.eyes, leftEye = false)
+    val gaze = Offset(pose.gazeX * 1.6f, pose.gazeY * 1.5f)
+    eye(39.5f + dx, eyeY, pose.eyes, leftEye = true, gaze)
+    eye(60.5f + dx, eyeY, pose.eyes, leftEye = false, gaze)
     if (pose.blush > 0f) {
         for (cx in listOf(35f + dx * 0.8f, 65f + dx * 0.8f)) {
             drawOval(Blush.copy(alpha = 0.55f * pose.blush), Offset(cx - 4.5f, 66f), Size(9f, 4.5f))
@@ -425,12 +434,12 @@ private fun DrawScope.face(pose: Pose, turn: Float) {
     mouth(50f + dx, 71f, pose.mouth)
 }
 
-private fun DrawScope.eye(cx: Float, cy: Float, eyes: Eyes, leftEye: Boolean) {
+private fun DrawScope.eye(cx: Float, cy: Float, eyes: Eyes, leftEye: Boolean, gaze: Offset = Offset.Zero) {
     when (eyes) {
         Eyes.Open, Eyes.LookAway, Eyes.LookDown -> {
             // White sclera with a green iris, dark pupil and highlights; heavy upper lash.
-            val look = when (eyes) { Eyes.LookAway -> -1.8f; else -> 0f }
-            val down = if (eyes == Eyes.LookDown) 1.6f else 0f
+            val look = when (eyes) { Eyes.LookAway -> -1.8f; else -> 0f } + gaze.x
+            val down = (if (eyes == Eyes.LookDown) 1.6f else 0f) + gaze.y
             val sclera = path {
                 moveTo(cx - 5.2f, cy - 3.5f); quadraticTo(cx, cy - 7.5f, cx + 5.2f, cy - 3.5f)
                 quadraticTo(cx + 5.4f, cy + 5.5f, cx, cy + 6f); quadraticTo(cx - 5.4f, cy + 5.5f, cx - 5.2f, cy - 3.5f); close()

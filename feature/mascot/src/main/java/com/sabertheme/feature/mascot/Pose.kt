@@ -9,7 +9,10 @@ enum class Brows { None, Calm, Angry, Worried }
 enum class Mouth { Neutral, Smile, Shock, Wail, Pout, Open, Puff }
 
 /** Things held in the hands. */
-enum class Prop { None, Sword, Gift, HeartHands, ChinHand }
+enum class Prop { None, Sword, Gift, HeartHands, ChinHand,
+    /** Right hand with the index finger out, along the arm. */
+    Point,
+}
 
 /**
  * Everything [drawSaber] needs for one frame, in rig units (the rig box is
@@ -23,6 +26,9 @@ data class Pose(
     val headTilt: Float = 0f,
     /** -1 (looking left) .. 1 (looking right): shifts the face inside the head. */
     val headTurn: Float = 0f,
+    /** Pupils inside open eyes, -1..1 each way (x toward [facing], y down). */
+    val gazeX: Float = 0f,
+    val gazeY: Float = 0f,
     val ahoge: Float = 0f,
     val armLeft: Float = REST_ARM,
     val armRight: Float = REST_ARM,
@@ -59,6 +65,8 @@ data class Pose(
             bodyTilt = f(bodyTilt, to.bodyTilt),
             headTilt = f(headTilt, to.headTilt),
             headTurn = f(headTurn, to.headTurn),
+            gazeX = f(gazeX, to.gazeX),
+            gazeY = f(gazeY, to.gazeY),
             ahoge = f(ahoge, to.ahoge),
             armLeft = f(armLeft, to.armLeft),
             armRight = f(armRight, to.armRight),

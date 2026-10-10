@@ -16,6 +16,10 @@ class MascotBrain(private val random: Random = Random.Default) {
         Wander,
         Sleeping,
         Dancing,
+        /** A finger near her: playful sword swings at it. */
+        Duel,
+        /** A finger far away: she points at it. */
+        Point,
     }
 
     enum class Moment { LookAround, Stretch, SwordPractice, Sit, HeartHands, Curious, Thinking }
@@ -50,6 +54,25 @@ class MascotBrain(private val random: Random = Random.Default) {
             pokes.size >= POUT_POKES -> set(Mood.Pout, now, POUT_MS)
             mood == Mood.Crying || mood == Mood.Pout -> Unit // keep sulking; more pokes escalate
             else -> set(Mood.Surprised, now, SURPRISE_MS)
+        }
+    }
+
+    /**
+     * A finger is on Home away from her (called every frame while it stays
+     * down); [near] picks a duel over pointing.
+     */
+    fun finger(near: Boolean, now: Long) {
+        if (mood !in FINGER_MOODS) return
+        val want = if (near) Mood.Duel else Mood.Point
+        if (mood != want) set(want, now, null) else until = Long.MAX_VALUE
+    }
+
+    /** The finger lifted: she keeps at it a moment longer. */
+    fun fingerUp(now: Long) {
+        when (mood) {
+            Mood.Duel -> until = now + DUEL_LINGER_MS
+            Mood.Point -> until = now + POINT_LINGER_MS
+            else -> Unit
         }
     }
 
@@ -149,6 +172,13 @@ class MascotBrain(private val random: Random = Random.Default) {
         const val MOMENT_GAP_MIN_MS = 8_000L
         const val MOMENT_GAP_MAX_MS = 20_000L
         const val WANDER_CHANCE = 0.25f
+        const val DUEL_LINGER_MS = 1_400L
+        const val POINT_LINGER_MS = 1_800L
+
+        /** Moods a finger elsewhere on Home interrupts (sulking, held or dazed she ignores it). */
+        private val FINGER_MOODS = setOf(
+            Mood.Idle, Mood.Moment, Mood.Wander, Mood.Walking, Mood.Dancing, Mood.Happy, Mood.Duel, Mood.Point,
+        )
 
         fun momentMs(m: Moment): Long = when (m) {
             Moment.LookAround -> 2_600L

@@ -114,4 +114,50 @@ class MascotBrainTest {
         brain.poke(2)
         assertThat(brain.mood).isEqualTo(Mood.Surprised)
     }
+
+    @Test
+    fun nearFingerDuelsAndLingersAfterLifting() {
+        brain.finger(near = true, now = 0)
+        assertThat(brain.mood).isEqualTo(Mood.Duel)
+        brain.tick(10_000)
+        assertThat(brain.mood).isEqualTo(Mood.Duel)
+        brain.fingerUp(10_000)
+        brain.tick(10_000 + MascotBrain.DUEL_LINGER_MS - 1)
+        assertThat(brain.mood).isEqualTo(Mood.Duel)
+        brain.tick(10_000 + MascotBrain.DUEL_LINGER_MS)
+        assertThat(brain.mood).isEqualTo(Mood.Idle)
+    }
+
+    @Test
+    fun farFingerPointsAndCrossingSwitches() {
+        brain.finger(near = false, now = 0)
+        assertThat(brain.mood).isEqualTo(Mood.Point)
+        brain.finger(near = true, now = 100)
+        assertThat(brain.mood).isEqualTo(Mood.Duel)
+        brain.finger(near = false, now = 200)
+        assertThat(brain.mood).isEqualTo(Mood.Point)
+        brain.fingerUp(300)
+        brain.tick(300 + MascotBrain.POINT_LINGER_MS)
+        assertThat(brain.mood).isEqualTo(Mood.Idle)
+    }
+
+    @Test
+    fun touchingAgainBeforeTheLingerEndsKeepsHerAtIt() {
+        brain.finger(near = true, now = 0)
+        brain.fingerUp(100)
+        brain.finger(near = true, now = 1_000)
+        brain.tick(100 + MascotBrain.DUEL_LINGER_MS + 5_000)
+        assertThat(brain.mood).isEqualTo(Mood.Duel)
+    }
+
+    @Test
+    fun fingerIsIgnoredWhileHeldOrCrying() {
+        brain.grab(0)
+        brain.finger(near = true, now = 10)
+        assertThat(brain.mood).isEqualTo(Mood.Held)
+        brain.release(20)
+        brain.land(MascotBrain.CRY_IMPACT, 30)
+        brain.finger(near = false, now = 40)
+        assertThat(brain.mood).isEqualTo(Mood.Crying)
+    }
 }
