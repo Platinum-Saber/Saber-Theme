@@ -222,6 +222,19 @@ fun HomeScreen(
         }
     }
 
+    /** Moves a page and keeps the page on screen showing the same content. */
+    fun movePage(from: Int, to: Int) {
+        val current = pager.currentPage
+        viewModel.movePage(from, to)
+        val follow = when {
+            current == from -> to
+            from < current && to >= current -> current - 1
+            from > current && to <= current -> current + 1
+            else -> current
+        }
+        if (follow != current) scope.launch { pager.scrollToPage(follow) }
+    }
+
     Box(Modifier.fillMaxSize().dragTracker(drag)) {
         WallpaperLayer()
         Column(
@@ -296,6 +309,7 @@ fun HomeScreen(
                         page = pager.currentPage,
                         pageCount = pager.pageCount,
                         onSelect = { scope.launch { pager.animateScrollToPage(it) } },
+                        onMove = ::movePage,
                         onAdd = ::addPage,
                         modifier = Modifier.align(Alignment.BottomCenter).graphicsLayer { alpha = edit.value },
                     )

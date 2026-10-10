@@ -132,4 +132,22 @@ class HomeLayoutDropTest {
         val single = HomeLayout(emptyList(), listOf(HomePage.Empty))
         assertThat(HomeLayoutPolicy.removePage(single, 0)).isEqualTo(single)
     }
+
+    @Test
+    fun movePageReordersPagesAndKeepsTheDock() {
+        val three = HomeLayoutPolicy.addPage(layout)
+        val (p0, p1, p2) = three.pages
+        val forward = HomeLayoutPolicy.movePage(three, 0, 2)
+        assertThat(forward.pages).containsExactly(p1, p2, p0).inOrder()
+        assertThat(forward.dock).isEqualTo(three.dock)
+        assertThat(HomeLayoutPolicy.movePage(three, 2, 0).pages).containsExactly(p2, p0, p1).inOrder()
+        assertThat(HomeLayoutPolicy.movePage(forward, 2, 0)).isEqualTo(three)
+    }
+
+    @Test
+    fun movePageIgnoresNoOpsAndBadIndices() {
+        assertThat(HomeLayoutPolicy.movePage(layout, 1, 1)).isEqualTo(layout)
+        assertThat(HomeLayoutPolicy.movePage(layout, -1, 0)).isEqualTo(layout)
+        assertThat(HomeLayoutPolicy.movePage(layout, 0, 5)).isEqualTo(layout)
+    }
 }

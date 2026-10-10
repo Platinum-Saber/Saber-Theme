@@ -116,6 +116,10 @@ class HomeViewModel @Inject constructor(
         edit { HomeLayoutPolicy.removePage(it, index) }
     }
 
+    fun movePage(from: Int, to: Int) {
+        edit { HomeLayoutPolicy.movePage(it, from, to) }
+    }
+
     /** At the first free spot from the current page on (a new page when all are full); returns its page. */
     fun addWidget(type: WidgetType, size: WidgetSize): Int? {
         val widget = HomeItem.Widget(newId(), type)

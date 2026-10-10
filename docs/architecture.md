@@ -212,7 +212,9 @@ blurs live. The Tilt effects setting maps onto `env.effects.tilt`.
 - Enter from the menu, or long-press an app, folder or widget and drag (the
   item's menu closes as the drag starts). The pager scales to 0.8 inside a
   dashed outline; top bar "Page X of N" + Done; page thumbnails with a "+"
-  page; toolbar Wallpaper / Widgets / Settings. Empty pages show "Remove
+  page (long-press a thumbnail and drag it sideways to reorder pages,
+  `HomeLayoutPolicy.movePage`; the page on screen keeps its content); toolbar
+  Wallpaper / Widgets / Settings. Empty pages show "Remove
   empty page". Back, Done or Home leaves edit mode.
 - `DragState`: items opt in with `Modifier.pickup` (in edit mode a move past
   touch slop picks up; otherwise long-press first). The root `dragTracker`

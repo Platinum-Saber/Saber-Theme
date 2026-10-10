@@ -244,6 +244,14 @@ object HomeLayoutPolicy {
         return layout.copy(pages = layout.pages.filterIndexed { i, _ -> i != index })
     }
 
+    /** Moves the page at [from] to [to]; unchanged when either is out of range. */
+    fun movePage(layout: HomeLayout, from: Int, to: Int): HomeLayout {
+        if (from == to || from !in layout.pages.indices || to !in layout.pages.indices) return layout
+        val pages = layout.pages.toMutableList()
+        pages.add(to, pages.removeAt(from))
+        return layout.copy(pages = pages)
+    }
+
     private class Lifted(val layout: HomeLayout, val item: HomeItem, val spanX: Int, val spanY: Int)
 
     private fun lift(layout: HomeLayout, source: DragSource): Lifted? = when (source) {
