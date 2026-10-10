@@ -30,9 +30,4 @@
 - Earlier open items (calendar PROVIDER_CHANGED refresh, dock gap, etc.) are in `handoffs/m4-mascot-and-polish.md` and come after this work.
 
 ## Next step
-Step 1:
-1. Add `lastTouch`/`touchDown`/`touchDownNanos` to `GlassEnvironment` and set them in `glassInteractionTracker` (window coords).
-2. Add the `Duel`/`Point` moods with tests to `MascotBrain`.
-3. Add aiming (facing, head/gaze, arm `atan2`), gaze pupils and the pointing hand.
-4. Run `testDebugUnitTest`, then `installDebug`, and test near/far taps on the S23.
-5. Commit and push.
+Mascot follow-ups are complete (9aab755..62804aa). Have the owner try a chat tap, a flick and the setting toggle. Then resume `handoffs/m4-mascot-and-polish.md`: add `CalendarContract.ACTION_PROVIDER_CHANGED` to `WidgetUpdateReceiver`.
