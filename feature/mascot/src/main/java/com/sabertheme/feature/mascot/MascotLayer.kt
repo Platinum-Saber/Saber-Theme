@@ -70,6 +70,8 @@ fun MascotLayer(
     outfit: Outfit = Outfit.Armor,
     /** True while a media session plays: she dances. */
     musicPlaying: () -> Boolean = { false },
+    /** True while the phone charges: she stands guard with a glowing sword. */
+    charging: () -> Boolean = { false },
     /** 0..1 fade, e.g. while the drawer opens over Home. */
     alpha: () -> Float = { 1f },
 ) {
@@ -79,6 +81,7 @@ fun MascotLayer(
     val power = remember { view.context.getSystemService(PowerManager::class.java) }
     // The frame loop outlives recompositions: read the latest values through these.
     val music by rememberUpdatedState(musicPlaying)
+    val currentCharging by rememberUpdatedState(charging)
     val currentAnchor by rememberUpdatedState(anchor)
     val currentAlpha by rememberUpdatedState(alpha)
     val currentOutfit by rememberUpdatedState(outfit)
@@ -195,7 +198,8 @@ fun MascotLayer(
             }
             feet = Offset(physics.x, physics.y)
 
-            val target = basePose(brain, time, motion)
+            val powered = currentCharging()
+            val target = basePose(brain, time, motion, powered).let { if (powered) it.copy(glow = 1f) else it }
             motion.blended = if (env.reducedMotion) target else motion.blended.approach(target, 1f - exp(-dt * POSE_RATE))
             // Lean with the phone: the tilt light moves off its rest direction.
             val tilt = if (env.effects.tilt) (env.light.x - GlassEnvironment.DEFAULT_LIGHT.x).coerceIn(-1f, 1f) else 0f
@@ -287,8 +291,9 @@ fun MascotLayer(
 }
 
 /** The pose each mood (and idle moment) blends toward; [Motion.animate] adds the moving parts. */
-private fun basePose(brain: MascotBrain, t: Float, motion: Motion): Pose = when (brain.mood) {
-    Mood.Idle, Mood.Walking, Mood.Wander, Mood.SoftLanding -> Pose.Neutral
+private fun basePose(brain: MascotBrain, t: Float, motion: Motion, charging: Boolean): Pose = when (brain.mood) {
+    Mood.Idle -> if (charging) Pose.Guard else Pose.Neutral
+    Mood.Walking, Mood.Wander, Mood.SoftLanding -> Pose.Neutral
     Mood.Surprised -> Pose.Surprised
     Mood.Pout -> Pose.Pout
     Mood.Crying -> Pose.Crying

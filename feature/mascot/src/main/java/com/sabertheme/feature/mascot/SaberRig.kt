@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.lerp
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -57,6 +58,8 @@ private val Frill = Color(0xFFFFFBF2)
 private val Effect = Color(0xFF8FA8FF)
 private val Heart = Color(0xFFF2899A)
 private val Sparkle = Color(0xFF8EE6F0)
+private val GlowGold = Color(0xFFFFC94A)
+private val GlowLight = Color(0xFFFFF4C2)
 
 private const val W = 1.3f
 
@@ -75,16 +78,16 @@ fun DrawScope.drawSaber(pose: Pose, time: Float, outfit: Outfit = Outfit.Armor) 
             legs(pose, outfit)
             skirt(outfit)
             torso(outfit)
-            arm(left = true, angle = pose.armLeft, pose = pose, outfit = outfit)
+            arm(left = true, angle = pose.armLeft, pose = pose, outfit = outfit, time = time)
             // A raised sword or pointing arm would vanish behind her big head: draw it in front.
             val armUp = pose.armRight > 95f && (pose.prop == Prop.Sword || pose.prop == Prop.Point)
-            if (!armUp) arm(left = false, angle = pose.armRight, pose = pose, outfit = outfit)
+            if (!armUp) arm(left = false, angle = pose.armRight, pose = pose, outfit = outfit, time = time)
             withTransform({ rotate(pose.headTilt, pivot = Offset(50f, 82f)) }) {
                 head(pose, time)
             }
             neckwear(outfit, time)
-            if (armUp) arm(left = false, angle = pose.armRight, pose = pose, outfit = outfit)
-            heldInFront(pose)
+            if (armUp) arm(left = false, angle = pose.armRight, pose = pose, outfit = outfit, time = time)
+            heldInFront(pose, time)
             if (pose.prop == Prop.ChinHand) {
                 withTransform({ rotate(pose.headTilt, pivot = Offset(50f, 82f)) }) { hand(Offset(55f, 80f), 3.4f) }
             }
@@ -217,7 +220,7 @@ private fun DrawScope.torso(outfit: Outfit) {
     }
 }
 
-private fun DrawScope.arm(left: Boolean, angle: Float, pose: Pose, outfit: Outfit) {
+private fun DrawScope.arm(left: Boolean, angle: Float, pose: Pose, outfit: Outfit, time: Float) {
     val sx = if (left) 38.5f else 61.5f
     val sy = 87.5f
     rotate(if (left) angle else -angle, pivot = Offset(sx, sy)) {
@@ -242,7 +245,7 @@ private fun DrawScope.arm(left: Boolean, angle: Float, pose: Pose, outfit: Outfi
                 line(path { moveTo(sx - 4.1f, sy + 14f); quadraticTo(sx, sy + 15.2f, sx + 4.1f, sy + 14f) }, WhiteShade, 0.8f)
             }
         }
-        if (!left && pose.prop == Prop.Sword) sword(Offset(sx, sy + 19f), pose.swordAngle + angle)
+        if (!left && pose.prop == Prop.Sword) sword(Offset(sx, sy + 19f), pose.swordAngle + angle, pose.glow, time)
         if (!left && pose.prop == Prop.Point) {
             // Index finger out along the arm.
             val finger = path { moveTo(sx - 1.2f, sy + 19f); lineTo(sx + 1.2f, sy + 19f); lineTo(sx + 1f, sy + 25.5f); quadraticTo(sx, sy + 26.8f, sx - 1f, sy + 25.5f); close() }
@@ -255,12 +258,37 @@ private fun DrawScope.arm(left: Boolean, angle: Float, pose: Pose, outfit: Outfi
     }
 }
 
-private fun DrawScope.sword(hand: Offset, angle: Float) {
+/** Blade up from [hand] turned [angle] degrees; [glow] (0..1) gilds it with a shimmer driven by [time]. */
+private fun DrawScope.sword(hand: Offset, angle: Float, glow: Float = 0f, time: Float = 0f) {
     rotate(angle, pivot = hand) {
         val (x, y) = hand
         val blade = path { moveTo(x - 2.4f, y - 4f); lineTo(x + 2.4f, y - 4f); lineTo(x + 2.2f, y - 34f); lineTo(x, y - 39f); lineTo(x - 2.2f, y - 34f); close() }
-        shape(blade, Brush.horizontalGradient(listOf(Color.White, Color(0xFFDCEBFF)), x - 2.4f, x + 2.4f), width = 1f)
-        line(path { moveTo(x, y - 6f); lineTo(x, y - 33f) }, Color(0xFFB9D3F5), 0.7f)
+        if (glow > 0.01f) {
+            // Halo: widening, faint gold strokes (no blur filter on this canvas).
+            val pulse = 0.8f + 0.2f * sin(time * 3f)
+            for ((width, a) in listOf(10f to 0.10f, 6.5f to 0.16f, 3.5f to 0.26f)) {
+                drawPath(blade, GlowGold.copy(alpha = a * glow * pulse), style = Stroke(width, join = StrokeJoin.Round))
+            }
+        }
+        val edge = lerp(Color.White, GlowLight, glow)
+        val flat = lerp(Color(0xFFDCEBFF), GlowGold, glow)
+        shape(blade, Brush.horizontalGradient(listOf(edge, flat), x - 2.4f, x + 2.4f), width = 1f)
+        line(path { moveTo(x, y - 6f); lineTo(x, y - 33f) }, lerp(Color(0xFFB9D3F5), Gold, glow), 0.7f)
+        if (glow > 0.01f) {
+            // A bright band runs hilt to tip every 1.6 s.
+            val phase = (time / 1.6f) % 1f
+            val by = y - 4f - 37f * phase
+            clipPath(blade) {
+                drawRect(
+                    Brush.verticalGradient(listOf(Color.Transparent, Color.White.copy(alpha = 0.95f * glow), Color.Transparent), by - 4f, by + 4f),
+                    Offset(x - 3f, by - 4f), Size(6f, 8f),
+                )
+            }
+            for (i in 0 until 3) {
+                val twinkle = sin(time * 4.2f + i * 2.1f).coerceAtLeast(0f) * glow
+                if (twinkle > 0.05f) star(Offset(x + (if (i % 2 == 0) 4.5f else -4.5f), y - 12f - i * 10f), 1.2f + 1.3f * twinkle, GlowLight.copy(alpha = twinkle), 4)
+            }
+        }
         shape(path { moveTo(x - 6f, y - 5.5f); lineTo(x + 6f, y - 5.5f); lineTo(x + 5f, y - 3f); lineTo(x - 5f, y - 3f); close() }, Gold, width = 0.9f)
         shape(path { moveTo(x - 1.5f, y - 3f); lineTo(x + 1.5f, y - 3f); lineTo(x + 1.5f, y + 4f); lineTo(x - 1.5f, y + 4f); close() }, BlueDark, width = 0.8f)
         drawCircle(Gold, 1.6f, Offset(x, y + 5f))
@@ -304,8 +332,14 @@ private fun DrawScope.scarfEnd(back: Boolean, time: Float) {
 }
 
 /** Things held in front of the chest: the gift or the heart hands. */
-private fun DrawScope.heldInFront(pose: Pose) {
+private fun DrawScope.heldInFront(pose: Pose, time: Float) {
     when (pose.prop) {
+        Prop.Guard -> {
+            // Planted point-down before her, hands stacked on the grip.
+            sword(Offset(50f, 101f), 180f, pose.glow, time)
+            hand(Offset(48.6f, 99.5f))
+            hand(Offset(51.4f, 102f))
+        }
         Prop.Gift -> {
             val box = path { moveTo(42f, 92f); lineTo(58f, 92f); lineTo(57f, 103f); lineTo(43f, 103f); close() }
             shape(box, Brush.verticalGradient(listOf(Color(0xFFFFF4E0), Color(0xFFF2D9A8)), 92f, 103f), width = 1f)

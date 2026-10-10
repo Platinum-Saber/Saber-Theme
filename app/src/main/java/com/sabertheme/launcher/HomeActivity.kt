@@ -80,6 +80,9 @@ class HomeActivity : ComponentActivity() {
             // The mascot dances while anything plays (needs the Media widget's listener access).
             val media by widgets.media.state.collectAsStateWithLifecycle(WidgetState.Loading)
             val musicPlaying = (media as? WidgetState.Ready)?.data?.let { m -> m.now?.playing == true || m.apps.any { it.playing } } == true
+            // ...and stands guard with a glowing sword while charging.
+            val battery by widgets.battery.state.collectAsStateWithLifecycle(WidgetState.Loading)
+            val charging = (battery as? WidgetState.Ready)?.data?.charging == true
 
             LaunchedEffect(Unit) {
                 homePresses.drop(1).collect {
@@ -118,7 +121,7 @@ class HomeActivity : ComponentActivity() {
                                 companion = { anchor, alpha ->
                                     // Her surface draws above every view: hide her under app-level sheets.
                                     if (settings.mascotEnabled && !lockPrompt && !widgetPickerOpen) {
-                                        MascotLayer(anchor, outfit = Outfit.valueOf(settings.mascotOutfit.name), musicPlaying = { musicPlaying }, alpha = alpha)
+                                        MascotLayer(anchor, outfit = Outfit.valueOf(settings.mascotOutfit.name), musicPlaying = { musicPlaying }, charging = { charging }, alpha = alpha)
                                     }
                                 },
                             )

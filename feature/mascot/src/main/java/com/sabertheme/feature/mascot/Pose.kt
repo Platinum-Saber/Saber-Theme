@@ -12,6 +12,8 @@ enum class Mouth { Neutral, Smile, Shock, Wail, Pout, Open, Puff }
 enum class Prop { None, Sword, Gift, HeartHands, ChinHand,
     /** Right hand with the index finger out, along the arm. */
     Point,
+    /** Sword planted point-down in front, both hands on the grip. */
+    Guard,
 }
 
 /**
@@ -46,6 +48,8 @@ data class Pose(
     val mouth: Mouth = Mouth.Neutral,
     val prop: Prop = Prop.None,
     val swordAngle: Float = -30f,
+    /** 0..1 golden shimmer on the sword (charging). */
+    val glow: Float = 0f,
     val sitting: Boolean = false,
     // Effects.
     val tears: Boolean = false,
@@ -76,6 +80,7 @@ data class Pose(
             lift = f(lift, to.lift),
             blush = f(blush, to.blush),
             swordAngle = f(swordAngle, to.swordAngle),
+            glow = f(glow, to.glow),
         )
     }
 
@@ -114,6 +119,7 @@ data class Pose(
         val SwordSwing = Pose(prop = Prop.Sword, swordAngle = 95f, armRight = -20f, bodyTilt = 6f, mouth = Mouth.Open, headTurn = 0.4f, brows = Brows.Angry)
         val Dancing = Pose(eyes = Eyes.Happy, mouth = Mouth.Smile, notes = true, armLeft = 50f, armRight = 30f, bodyTilt = -6f, headTilt = -8f)
         val Sitting = Pose(sitting = true, legLeft = 60f, legRight = 50f, armLeft = 10f, armRight = 10f)
+        val Guard = Pose(prop = Prop.Guard, armLeft = -43f, armRight = -43f, brows = Brows.Calm, legLeft = 6f, legRight = 6f)
 
         val gallery = listOf(
             "Neutral" to Neutral, "Blink" to Blink, "Surprised" to Surprised, "Pout" to Pout,
@@ -121,6 +127,7 @@ data class Pose(
             "Heart hands" to HeartHands, "Thinking" to Thinking, "Embarrassed" to Embarrassed, "Huff" to Huff,
             "Curious" to Curious, "Sleepy" to Sleepy, "Dizzy" to Dizzy, "Held" to Held,
             "Sword ready" to SwordReady, "Sword swing" to SwordSwing, "Dancing" to Dancing, "Sitting" to Sitting,
+            "Guard" to Guard, "Guard (glow)" to Guard.copy(glow = 1f), "Sword (glow)" to SwordReady.copy(glow = 1f),
         )
     }
 }
