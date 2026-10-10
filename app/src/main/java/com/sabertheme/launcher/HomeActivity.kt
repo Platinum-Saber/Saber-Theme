@@ -88,7 +88,8 @@ class HomeActivity : ComponentActivity() {
             }
 
             LaunchedEffect(settings.intensity) { previewIntensity = null }
-            BackdropLoader(env, remember(settings.wallpaper) { viewModel.backdropSource(settings.wallpaper) })
+            val framings by viewModel.wallpaperFramings.collectAsStateWithLifecycle()
+            BackdropLoader(env, remember(settings.wallpaper, framings) { viewModel.backdropSource(settings.wallpaper) })
             GlassEffectsController(env, previewIntensity ?: settings.intensity)
             LaunchedEffect(settings.tiltEnabled) {
                 env.effects = env.effects.copy(tilt = settings.tiltEnabled)

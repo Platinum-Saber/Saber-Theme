@@ -64,14 +64,19 @@ internal fun WallpaperPicker(settings: GlassSettings, photos: List<String>, impo
         items(AuroraWallpaper.bundled, key = { it.id }) { spec ->
             val choice = WallpaperChoice.Bundled(spec.id)
             val thumb = auroraThumb(spec)
-            WallpaperTile(thumb, spec.id, selected = settings.wallpaper == choice, onDelete = null) {
+            WallpaperTile(thumb, spec.id, selected = settings.wallpaper == choice, onDelete = null, onAdjust = null) {
                 viewModel.selectWallpaper(choice)
             }
         }
         items(photos, key = { it }) { name ->
             val choice = WallpaperChoice.Photo(name)
             val thumb = photoThumb(viewModel, name)
-            WallpaperTile(thumb, "Photo", selected = settings.wallpaper == choice, onDelete = { viewModel.deletePhoto(name) }) {
+            WallpaperTile(
+                thumb, "Photo",
+                selected = settings.wallpaper == choice,
+                onDelete = { viewModel.deletePhoto(name) },
+                onAdjust = { viewModel.editPhoto(name) },
+            ) {
                 viewModel.selectWallpaper(choice)
             }
         }
@@ -102,6 +107,7 @@ private fun WallpaperTile(
     description: String,
     selected: Boolean,
     onDelete: (() -> Unit)?,
+    onAdjust: (() -> Unit)?,
     onSelect: () -> Unit,
 ) {
     val colors = Saber.colors
@@ -129,6 +135,21 @@ private fun WallpaperTile(
                     contentDescription = "Remove photo",
                     colorFilter = ColorFilter.tint(colors.glyph),
                     modifier = Modifier.align(Alignment.Center).size(14.dp),
+                )
+            }
+        }
+        if (onAdjust != null) {
+            GlassSurface(
+                Modifier.align(Alignment.BottomEnd).padding(Space.s1).size(30.dp),
+                shape = GlassShape.Pill,
+                material = GlassMaterial.Thick,
+                onClick = onAdjust,
+            ) {
+                Image(
+                    painterResource(UiGlyph.EDIT.drawable),
+                    contentDescription = "Adjust photo",
+                    colorFilter = ColorFilter.tint(colors.glyph),
+                    modifier = Modifier.align(Alignment.Center).size(15.dp),
                 )
             }
         }

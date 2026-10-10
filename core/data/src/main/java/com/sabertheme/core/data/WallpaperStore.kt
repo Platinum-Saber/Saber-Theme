@@ -1,5 +1,6 @@
 package com.sabertheme.core.data
 
+import com.sabertheme.core.model.PhotoFraming
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -26,6 +27,10 @@ class WallpaperStore @Inject constructor(@ApplicationContext private val context
 
     private val dir = File(context.filesDir, "wallpapers").apply { mkdirs() }
     private val _photos = MutableStateFlow(scan())
+    private val _framings = MutableStateFlow(scanFramings())
+
+    /** Saved framing per photo file name (missing: centred fill). */
+    val framings: StateFlow<Map<String, PhotoFraming>> = _framings.asStateFlow()
 
     /** Imported photo file names, newest first. */
     val photos: StateFlow<List<String>> = _photos.asStateFlow()
@@ -65,8 +70,33 @@ class WallpaperStore @Inject constructor(@ApplicationContext private val context
 
     suspend fun delete(fileName: String) = withContext(Dispatchers.IO) {
         File(dir, fileName).delete()
+        framingFile(fileName).delete()
         _photos.value = scan()
+        _framings.value = scanFramings()
     }
+
+    fun framing(fileName: String): PhotoFraming = _framings.value[fileName] ?: PhotoFraming()
+
+    suspend fun saveFraming(fileName: String, framing: PhotoFraming) = withContext(Dispatchers.IO) {
+        framingFile(fileName).writeText(PhotoFraming.encode(framing))
+        _framings.value = scanFramings()
+    }
+
+    /** Pixel size of a stored photo, without decoding it. */
+    suspend fun size(fileName: String): Pair<Int, Int>? = withContext(Dispatchers.IO) {
+        val file = File(dir, fileName)
+        if (!file.isFile) return@withContext null
+        val o = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(file.path, o)
+        o.outWidth to o.outHeight
+    }
+
+    private fun framingFile(fileName: String) = File(dir, fileName.substringBeforeLast('.') + FRAMING_SUFFIX)
+
+    private fun scanFramings(): Map<String, PhotoFraming> =
+        dir.listFiles { f -> f.isFile && f.name.endsWith(FRAMING_SUFFIX) }.orEmpty().mapNotNull { f ->
+            PhotoFraming.decode(runCatching { f.readText() }.getOrNull())?.let { f.name.removeSuffix(FRAMING_SUFFIX) + ".webp" to it }
+        }.toMap()
 
     private fun scan(): List<String> =
         dir.listFiles { f -> f.isFile && f.name.endsWith(".webp") }
@@ -76,5 +106,6 @@ class WallpaperStore @Inject constructor(@ApplicationContext private val context
 
     private companion object {
         const val MAX_EDGE = 3072
+        const val FRAMING_SUFFIX = ".framing"
     }
 }

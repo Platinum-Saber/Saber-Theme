@@ -145,8 +145,11 @@ class HomeViewModel @Inject constructor(
     val settings: StateFlow<GlassSettings?> =
         settingsRepository.settings.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
+    /** Changes when a photo is re-framed, so Home re-renders its backdrop. */
+    val wallpaperFramings = wallpaperStore.framings
+
     fun backdropSource(choice: WallpaperChoice): BackdropSource = when (choice) {
         is WallpaperChoice.Bundled -> BackdropSource.Aurora(AuroraWallpaper.byId(choice.id))
-        is WallpaperChoice.Photo -> BackdropSource.Photo(choice.fileName) { wallpaperStore.load(choice.fileName) }
+        is WallpaperChoice.Photo -> BackdropSource.Photo(choice.fileName, wallpaperStore.framing(choice.fileName)) { wallpaperStore.load(choice.fileName) }
     }
 }

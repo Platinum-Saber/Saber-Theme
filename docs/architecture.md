@@ -82,7 +82,15 @@ widgets share it.
     dock kept, first page placed in reading order, default widget page
     prepended, later pages dropped (those apps live in the drawer).
   - `WallpaperStore`: imported photos copied to `filesDir/wallpapers` as
-    WebP (long edge <= 3072 px); the picker grant is temporary.
+    WebP (long edge <= 3072 px); the picker grant is temporary. Each photo
+    has an optional `<name>.framing` sidecar with its `PhotoFraming`
+    (centre point + zoom relative to fill; pure and tested in `core/model`;
+    missing = centred fill). Picking a photo opens `WallpaperEditor` (true-size
+    preview with Home guides, drag / pinch / double-tap fit); it only becomes
+    the wallpaper on "Set wallpaper", and Cancel deletes a fresh import. The
+    pencil badge on a photo tile re-opens the editor. Zoomed out below fill,
+    `GlassBackdrop` fills the rest with a blurred, darkened copy
+    (`GlassBackdrop.blurredCopy`, shared with the editor).
 - `HomeLayoutPolicy` (pure Kotlin, tested) builds the curated first-run
   layout: dock from phone/messages/browser/camera glyphs; page 1 widgets
   (Clock 4x2, Weather 2x2, Calendar 2x2, Battery 2x1, Alarm 2x1; Media is

@@ -1,5 +1,6 @@
 package com.sabertheme.core.designsystem.glass
 
+import com.sabertheme.core.model.PhotoFraming
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -50,15 +51,46 @@ class GlassBackdrop(
                 paintAurora(canvas, wallpaper, w, h)
             }
 
-        /** Centre-crops [photo] to the window; light/dark comes from its luminance. */
-        fun render(photo: Bitmap, windowW: Int, windowH: Int, overscan: Int, density: Float): GlassBackdrop =
+        /**
+         * Places [photo] on the window per [framing] (the overscan margin around
+         * the window shows a little more of the same placement); light/dark comes
+         * from its luminance. Zoomed out below fill, a blurred, darkened cover
+         * copy fills the rest.
+         */
+        fun render(photo: Bitmap, framing: PhotoFraming, windowW: Int, windowH: Int, overscan: Int, density: Float): GlassBackdrop =
             render(windowW, windowH, overscan, density, darkOverride = null) { canvas, w, h ->
-                val scale = maxOf(w / photo.width, h / photo.height)
-                val dw = photo.width * scale
-                val dh = photo.height * scale
-                val dst = android.graphics.RectF((w - dw) / 2f, (h - dh) / 2f, (w + dw) / 2f, (h + dh) / 2f)
-                canvas.drawBitmap(photo, null, dst, Paint(Paint.FILTER_BITMAP_FLAG or Paint.DITHER_FLAG))
+                val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.DITHER_FLAG)
+                val pw = photo.width.toFloat()
+                val ph = photo.height.toFloat()
+                if (framing.showsFill(pw, ph, windowW.toFloat(), windowH.toFloat())) drawBlurredFill(canvas, photo, w, h)
+                val (l, t, r, b) = framing.destination(pw, ph, windowW.toFloat(), windowH.toFloat()).toList()
+                canvas.drawBitmap(photo, null, android.graphics.RectF(l + overscan, t + overscan, r + overscan, b + overscan), paint)
             }
+
+        /** Small, heavily blurred copy of [photo] for the zoomed-out fill (editor preview too). */
+        fun blurredCopy(photo: Bitmap): Bitmap {
+            val small = 64
+            val scale = maxOf(small / photo.width.toFloat(), small / photo.height.toFloat())
+            val sw = (photo.width * scale).toInt().coerceAtLeast(1)
+            val sh = (photo.height * scale).toInt().coerceAtLeast(1)
+            val tiny = Bitmap.createScaledBitmap(photo, sw, sh, true)
+            val px = IntArray(sw * sh).also { tiny.getPixels(it, 0, sw, 0, 0, sw, sh) }
+            tiny.recycle()
+            return Bitmap.createBitmap(BoxBlur.blur(px, sw, sh, 4), sw, sh, Bitmap.Config.ARGB_8888)
+        }
+
+        /** Cover-scaled [blurredCopy], slightly darkened. */
+        private fun drawBlurredFill(canvas: Canvas, photo: Bitmap, w: Float, h: Float) {
+            val blurred = blurredCopy(photo)
+            val sw = blurred.width
+            val sh = blurred.height
+            val cover = maxOf(w / sw, h / sh)
+            val dw = sw * cover
+            val dh = sh * cover
+            canvas.drawBitmap(blurred, null, android.graphics.RectF((w - dw) / 2f, (h - dh) / 2f, (w + dw) / 2f, (h + dh) / 2f), Paint(Paint.FILTER_BITMAP_FLAG))
+            canvas.drawColor(android.graphics.Color.argb(70, 0, 0, 0))
+            blurred.recycle()
+        }
 
         private fun render(
             windowW: Int,

@@ -116,6 +116,7 @@ fun SettingsScreen(
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val photos by viewModel.photos.collectAsStateWithLifecycle()
     val importing by viewModel.importing.collectAsStateWithLifecycle()
+    val editing by viewModel.editing.collectAsStateWithLifecycle()
     val colors = Saber.colors
 
     Box(Modifier.fillMaxSize()) {
@@ -224,6 +225,7 @@ fun SettingsScreen(
                 }
             }
         }
+        editing?.let { WallpaperEditor(it, viewModel) }
     }
 }
 

@@ -1,5 +1,6 @@
 package com.sabertheme.core.designsystem.glass
 
+import com.sabertheme.core.model.PhotoFraming
 import android.graphics.Bitmap
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -86,7 +87,9 @@ sealed interface BackdropSource {
         override val key get() = spec.id
     }
 
-    class Photo(override val key: String, val load: suspend () -> Bitmap?) : BackdropSource
+    class Photo(val fileName: String, val framing: PhotoFraming, val load: suspend () -> Bitmap?) : BackdropSource {
+        override val key get() = "$fileName@${PhotoFraming.encode(framing)}"
+    }
 }
 
 /** Renders [source] for the current window into [environment] off the main thread. */
@@ -99,9 +102,10 @@ fun BackdropLoader(environment: GlassEnvironment, source: BackdropSource) {
         val overscan = (GlassEnvironment.OVERSCAN.value * density).toInt()
         environment.backdrop = withContext(Dispatchers.Default) {
             GlassPrograms.prewarm()
-            val photo = (source as? BackdropSource.Photo)?.load?.invoke()
+            val photoSource = source as? BackdropSource.Photo
+            val photo = photoSource?.load?.invoke()
             if (photo != null) {
-                GlassBackdrop.render(photo, size.width, size.height, overscan, density).also { photo.recycle() }
+                GlassBackdrop.render(photo, photoSource.framing, size.width, size.height, overscan, density).also { photo.recycle() }
             } else {
                 val spec = (source as? BackdropSource.Aurora)?.spec ?: AuroraWallpaper.Night
                 GlassBackdrop.render(spec, size.width, size.height, overscan, density)
