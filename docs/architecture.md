@@ -328,6 +328,12 @@ weather cache.
   `GeneratedGlyphs.kt` (`AppGlyph`, `UiGlyph`, package map from
   `design/icons/packages.json`); `node tools/build-plugin.mjs` bundles the
   Figma plugin into `design/figma-plugin/dist/code.js`.
+- App icon: the Platinum-Saber logo (Figma "Classic · Metallic") lives in
+  `design/logo/saber-logo-classic-metallic.svg`; `node tools/build-app-icon.mjs`
+  converts it into `ic_launcher_foreground` (gradients, mask halves as
+  clip-paths, blur glow approximated with faint wide strokes) and
+  `ic_launcher_monochrome` (silhouette) on a `#0B0D10` background, with the
+  logo disc filling the 66-unit safe zone.
 - Rendering: glyph centred on a glass squircle, or bare (Settings → Icon
   style), via `LocalIconAppearance`.
 - Lookup order: mapped glyph → adaptive-icon monochrome layer → generated

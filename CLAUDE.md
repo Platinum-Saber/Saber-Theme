@@ -22,6 +22,7 @@ Run from the repo root. Always pipe through the trim hook.
 - Perf: `./gradlew installBenchmark` (R8, debug-signed), then `adb shell dumpsys gfxinfo com.sabertheme.launcher`.
 - Glyphs/plugin: `node tools/build-icons.mjs`, `node tools/build-plugin.mjs` (edit `design/icons/`, never generated files).
 - Icon pack: `node tools/dump-components.mjs` (adb), `node tools/build-iconpack.mjs`, `./gradlew :iconpack:installDebug`.
+- App icon: `node tools/build-app-icon.mjs` (edit `design/logo/*.svg`).
 - Device: `adb devices -l`; logs: `adb logcat -d --pid=$(adb shell pidof -s <appId>) | tail -200` (never stream unbounded logcat).
 
 ## House rules
