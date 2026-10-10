@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 
 /** Mascot height on Home; width follows the 100 x 140 rig box. */
-internal val MASCOT_HEIGHT = 72.dp
+internal val MASCOT_HEIGHT = 101.dp // 72 dp + 40%: readable on Home
 internal val MASCOT_WIDTH = MASCOT_HEIGHT * (100f / 140f)
 
 /**
