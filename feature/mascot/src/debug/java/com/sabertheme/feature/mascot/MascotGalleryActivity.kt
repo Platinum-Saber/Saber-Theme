@@ -6,18 +6,21 @@ import androidx.activity.compose.setContent
 import androidx.compose.animation.core.withInfiniteAnimationFrameMillis
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -36,14 +39,23 @@ class MascotGalleryActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             var time by remember { mutableFloatStateOf(0f) }
+            var outfit by remember { mutableStateOf(Outfit.Armor) }
             LaunchedEffect(Unit) { while (true) withInfiniteAnimationFrameMillis { time = it / 1000f } }
             LazyVerticalGrid(
                 GridCells.Fixed(3),
                 Modifier.fillMaxSize().background(Color(0xFF1B2140)).padding(top = 40.dp),
             ) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    // Tap to cycle outfits.
+                    BasicText(
+                        "Outfit: ${outfit.name}  (tap to change)",
+                        Modifier.clickable { outfit = Outfit.entries[(outfit.ordinal + 1) % Outfit.entries.size] }.padding(12.dp),
+                        style = TextStyle(color = Color.White, fontSize = 16.sp),
+                    )
+                }
                 items(Pose.gallery) { (name, pose) ->
                     Column(Modifier.padding(6.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Canvas(Modifier.size(100.dp, 140.dp)) { drawSaber(pose, time) }
+                        Canvas(Modifier.size(100.dp, 140.dp)) { drawSaber(pose, time, outfit) }
                         BasicText(name, style = TextStyle(color = Color.White, fontSize = 12.sp))
                     }
                 }
