@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.sabertheme.core.model.GlassSettings
 import com.sabertheme.core.model.IconStyle
+import com.sabertheme.core.model.MascotOutfit
 import com.sabertheme.core.model.WallpaperChoice
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -27,6 +28,8 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
                 iconStyle = decodeIconStyle(prefs[ICON_STYLE]),
                 showLabels = prefs[SHOW_LABELS] ?: true,
                 tiltEnabled = prefs[TILT] ?: true,
+                mascotEnabled = prefs[MASCOT] ?: true,
+                mascotOutfit = MascotOutfit.entries.firstOrNull { it.name == prefs[MASCOT_OUTFIT] } ?: MascotOutfit.Armor,
             )
         }
         .distinctUntilChanged()
@@ -51,12 +54,22 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
         store.edit { it[TILT] = enabled }
     }
 
+    suspend fun setMascotEnabled(enabled: Boolean) {
+        store.edit { it[MASCOT] = enabled }
+    }
+
+    suspend fun setMascotOutfit(outfit: MascotOutfit) {
+        store.edit { it[MASCOT_OUTFIT] = outfit.name }
+    }
+
     internal companion object {
         val INTENSITY = floatPreferencesKey("glass_intensity")
         val WALLPAPER = stringPreferencesKey("wallpaper")
         val ICON_STYLE = stringPreferencesKey("icon_style")
         val SHOW_LABELS = booleanPreferencesKey("show_labels")
         val TILT = booleanPreferencesKey("tilt")
+        val MASCOT = booleanPreferencesKey("mascot")
+        val MASCOT_OUTFIT = stringPreferencesKey("mascot_outfit")
 
         fun decodeIconStyle(value: String?): IconStyle = IconStyle.entries.firstOrNull { it.name == value } ?: IconStyle.Tile
 

@@ -57,6 +57,9 @@ class GlassEnvironment {
     /** Set by the effects controller; glass calls it on every touch. */
     var onInteraction: () -> Unit = {}
 
+    /** [System.nanoTime] of the last touch anywhere on Home (the mascot sleeps after a quiet spell). */
+    @Volatile var lastInteractionNanos: Long = System.nanoTime()
+
     companion object {
         val DEFAULT_LIGHT = Offset(-0.38f, -0.92f)
         val OVERSCAN = 28.dp

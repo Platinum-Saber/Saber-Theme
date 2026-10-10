@@ -68,4 +68,50 @@ class MascotBrainTest {
         brain.tick(2_001)
         assertThat(brain.mood).isEqualTo(Mood.Idle)
     }
+
+    @Test
+    fun fallsAsleepWhenHomeIsQuietAndWakesWithAStartOnTouch() {
+        brain.tick(0, quietForMs = 0)
+        brain.tick(1_000, quietForMs = MascotBrain.SLEEP_AFTER_MS)
+        assertThat(brain.mood).isEqualTo(Mood.Sleeping)
+        brain.tick(2_000, quietForMs = 30)
+        assertThat(brain.mood).isEqualTo(Mood.Surprised)
+    }
+
+    @Test
+    fun dancesWhileMusicPlaysAndStopsAfter() {
+        brain.tick(0, music = true)
+        assertThat(brain.mood).isEqualTo(Mood.Dancing)
+        brain.tick(10_000, quietForMs = MascotBrain.SLEEP_AFTER_MS * 2, music = true)
+        assertThat(brain.mood).isEqualTo(Mood.Dancing) // no sleeping through music
+        brain.tick(11_000, music = false)
+        assertThat(brain.mood).isEqualTo(Mood.Idle)
+    }
+
+    @Test
+    fun idleMomentsComeAfterAGapAndEnd() {
+        val seeded = MascotBrain(kotlin.random.Random(7))
+        seeded.tick(0)
+        assertThat(seeded.mood).isEqualTo(Mood.Idle)
+        seeded.tick(MascotBrain.MOMENT_GAP_MIN_MS - 1)
+        assertThat(seeded.mood).isEqualTo(Mood.Idle)
+        var t = 0L
+        while (seeded.mood == Mood.Idle && t < MascotBrain.MOMENT_GAP_MAX_MS + 1) { t += 100; seeded.tick(t) }
+        assertThat(seeded.mood).isAnyOf(Mood.Moment, Mood.Wander)
+        if (seeded.mood == Mood.Moment) {
+            seeded.tick(t + MascotBrain.momentMs(seeded.moment))
+        } else {
+            assertThat(kotlin.math.abs(seeded.wanderDp)).isAtLeast(40f)
+            seeded.arrived(t + 1)
+        }
+        assertThat(seeded.mood).isEqualTo(Mood.Idle)
+    }
+
+    @Test
+    fun pokesStillWorkWhileSleeping() {
+        brain.tick(0)
+        brain.tick(1, quietForMs = MascotBrain.SLEEP_AFTER_MS)
+        brain.poke(2)
+        assertThat(brain.mood).isEqualTo(Mood.Surprised)
+    }
 }

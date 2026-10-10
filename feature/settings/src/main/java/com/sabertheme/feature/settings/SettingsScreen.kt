@@ -66,6 +66,7 @@ import com.sabertheme.core.designsystem.theme.Saber
 import com.sabertheme.core.icons.UiGlyph
 import com.sabertheme.core.model.HomeLayout
 import com.sabertheme.core.model.IconStyle
+import com.sabertheme.core.model.MascotOutfit
 
 private val SIDE = 18.dp
 
@@ -193,6 +194,20 @@ fun SettingsScreen(
                         Divider()
                         SettingRow("Show labels") {
                             GlassSwitch(settings.showLabels, viewModel::setShowLabels)
+                        }
+                    }
+
+                    Group("Mascot") {
+                        SettingRow("Show Saber") {
+                            GlassSwitch(settings.mascotEnabled, viewModel::setMascotEnabled)
+                        }
+                        Divider()
+                        SettingRow("Outfit") {
+                            Segmented(
+                                options = listOf(MascotOutfit.Armor to "Armour", MascotOutfit.Winter to "Winter", MascotOutfit.Casual to "Casual"),
+                                selected = settings.mascotOutfit,
+                                onSelect = viewModel::setMascotOutfit,
+                            )
                         }
                     }
 

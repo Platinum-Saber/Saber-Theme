@@ -1,5 +1,7 @@
 package com.sabertheme.launcher
 
+import com.sabertheme.core.widgetdata.WidgetState
+import com.sabertheme.feature.mascot.Outfit
 import com.sabertheme.feature.mascot.MascotLayer
 import android.content.Intent
 import android.os.Bundle
@@ -73,6 +75,9 @@ class HomeActivity : ComponentActivity() {
             val drawer = rememberDrawerState()
             var widgetPickerOpen by rememberSaveable { mutableStateOf(false) }
             val homePressCount by homePresses.collectAsStateWithLifecycle()
+            // The mascot dances while anything plays (needs the Media widget's listener access).
+            val media by widgets.media.state.collectAsStateWithLifecycle(WidgetState.Loading)
+            val musicPlaying = (media as? WidgetState.Ready)?.data?.let { m -> m.now?.playing == true || m.apps.any { it.playing } } == true
 
             LaunchedEffect(Unit) {
                 homePresses.drop(1).collect {
@@ -104,7 +109,11 @@ class HomeActivity : ComponentActivity() {
                                 backgroundBlur = { maxOf(drawer.fraction, settingsPage.fraction) },
                                 resetSignal = homePressCount,
                                 widgetContent = { widget, size, modifier -> WidgetHost(widgets, widget, size, modifier) },
-                                companion = { anchor -> MascotLayer(anchor) },
+                                companion = { anchor ->
+                                    if (settings.mascotEnabled) {
+                                        MascotLayer(anchor, outfit = Outfit.valueOf(settings.mascotOutfit.name), musicPlaying = { musicPlaying })
+                                    }
+                                },
                             )
                         } else {
                             WallpaperLayer()

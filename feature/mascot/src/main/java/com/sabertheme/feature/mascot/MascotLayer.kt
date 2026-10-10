@@ -1,5 +1,9 @@
 package com.sabertheme.feature.mascot
 
+import kotlin.math.PI
+import com.sabertheme.core.designsystem.glass.GlassEnvironment
+import kotlinx.coroutines.delay
+import android.os.PowerManager
 import android.os.SystemClock
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.Canvas
@@ -15,6 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
@@ -44,6 +49,8 @@ internal val MASCOT_WIDTH = MASCOT_HEIGHT * (100f / 140f)
 
 private const val WALK_DP_PER_S = 48f
 private const val POSE_RATE = 14f
+private const val FRAME_MS = 22L
+private const val SAVER_FRAME_MS = 110L
 
 /**
  * Saber on the search bar. [anchor] is the search pill's window bounds; her
@@ -53,10 +60,20 @@ private const val POSE_RATE = 14f
  * throws her (physics in [MascotPhysics], moods in [MascotBrain]).
  */
 @Composable
-fun MascotLayer(anchor: () -> Rect, modifier: Modifier = Modifier, outfit: Outfit = Outfit.Armor) {
+fun MascotLayer(
+    anchor: () -> Rect,
+    modifier: Modifier = Modifier,
+    outfit: Outfit = Outfit.Armor,
+    /** True while a media session plays: she dances. */
+    musicPlaying: () -> Boolean = { false },
+) {
     val density = LocalDensity.current
     val view = LocalView.current
     val env = LocalGlassEnvironment.current
+    val power = remember { view.context.getSystemService(PowerManager::class.java) }
+    // The frame loop outlives recompositions: read the latest values through these.
+    val music by rememberUpdatedState(musicPlaying)
+    val currentAnchor by rememberUpdatedState(anchor)
     val physics = remember { MascotPhysics(density.density) }
     val brain = remember { MascotBrain() }
     val motion = remember { Motion() }
@@ -69,7 +86,7 @@ fun MascotLayer(anchor: () -> Rect, modifier: Modifier = Modifier, outfit: Outfi
     val h = with(density) { MASCOT_HEIGHT.toPx() }
 
     fun home(): Offset? {
-        val bar = anchor()
+        val bar = currentAnchor()
         if (bar.isEmpty || layer == IntSize.Zero) return null
         return with(density) {
             // Boots sit a little into the bar's rim, so she stands on it.
@@ -83,11 +100,20 @@ fun MascotLayer(anchor: () -> Rect, modifier: Modifier = Modifier, outfit: Outfi
 
     LaunchedEffect(physics) {
         var last = 0L
-        while (true) withFrameNanos { now ->
+        var saver = false
+        var saverCheckedAt = 0L
+        // Always animating while Home shows her, capped near 30 fps (~8 fps in Power Saving).
+        while (true) {
+            delay(if (saver) SAVER_FRAME_MS else FRAME_MS)
+            withFrameNanos { now ->
             val dt = if (last == 0L) 0f else ((now - last) / 1e9f).coerceAtMost(0.05f)
             last = now
             time += dt
             val ms = now / 1_000_000
+            if (ms - saverCheckedAt > 2_000) {
+                saverCheckedAt = ms
+                saver = power.isPowerSaveMode
+            }
             val spot = home() ?: return@withFrameNanos
             physics.minX = w / 2f
             physics.maxX = layer.width - w / 2f
@@ -104,21 +130,33 @@ fun MascotLayer(anchor: () -> Rect, modifier: Modifier = Modifier, outfit: Outfi
                 if (!physics.airborne) {
                     // The bar may move (insets, rotation): stay on it.
                     physics.y = spot.y
-                    if (brain.mood == Mood.Walking && physics.walkToward(spot.x, WALK_DP_PER_S, dt)) brain.arrived(ms)
+                    when (brain.mood) {
+                        Mood.Walking -> if (physics.walkToward(spot.x, WALK_DP_PER_S, dt)) brain.arrived(ms)
+                        Mood.Wander -> {
+                            val target = (spot.x + brain.wanderDp * density.density).coerceIn(physics.minX, physics.maxX)
+                            motion.facing = sign(target - physics.x).takeIf { it != 0f } ?: motion.facing
+                            if (physics.walkToward(target, WALK_DP_PER_S * 0.7f, dt)) brain.arrived(ms)
+                        }
+                        else -> Unit
+                    }
                 }
             }
             brain.awayFromHome = !physics.airborne && abs(physics.x - spot.x) > 2f * density.density
-            brain.tick(ms)
+            val quietMs = (System.nanoTime() - env.lastInteractionNanos) / 1_000_000
+            brain.tick(ms, quietMs, music())
             motion.facing = when {
                 brain.mood == Mood.Walking -> sign(spot.x - physics.x).takeIf { it != 0f } ?: motion.facing
-                brain.mood == Mood.Idle -> 1f
+                brain.mood == Mood.Idle || brain.mood == Mood.Dancing || brain.mood == Mood.Sleeping -> 1f
                 else -> motion.facing
             }
             feet = Offset(physics.x, physics.y)
 
-            val target = basePose(brain.mood)
+            val target = basePose(brain, time)
             motion.blended = if (env.reducedMotion) target else motion.blended.approach(target, 1f - exp(-dt * POSE_RATE))
-            pose = motion.animate(brain, time, ms, density.density)
+            // Lean with the phone: the tilt light moves off its rest direction.
+            val tilt = if (env.effects.tilt) (env.light.x - GlassEnvironment.DEFAULT_LIGHT.x).coerceIn(-1f, 1f) else 0f
+            pose = if (env.reducedMotion) motion.blended else motion.animate(brain, time, tilt)
+            }
         }
     }
 
@@ -202,9 +240,9 @@ fun MascotLayer(anchor: () -> Rect, modifier: Modifier = Modifier, outfit: Outfi
     }
 }
 
-/** The pose each mood blends toward; [Motion.animate] adds the moving parts. */
-private fun basePose(mood: Mood): Pose = when (mood) {
-    Mood.Idle, Mood.Walking, Mood.SoftLanding -> Pose.Neutral
+/** The pose each mood (and idle moment) blends toward; [Motion.animate] adds the moving parts. */
+private fun basePose(brain: MascotBrain, t: Float): Pose = when (brain.mood) {
+    Mood.Idle, Mood.Walking, Mood.Wander, Mood.SoftLanding -> Pose.Neutral
     Mood.Surprised -> Pose.Surprised
     Mood.Pout -> Pose.Pout
     Mood.Crying -> Pose.Crying
@@ -212,6 +250,17 @@ private fun basePose(mood: Mood): Pose = when (mood) {
     Mood.Held -> Pose.Held
     Mood.Falling -> Pose.Held.copy(armLeft = 120f, armRight = 120f, mouth = Mouth.Shock)
     Mood.Dizzy -> Pose.Dizzy
+    Mood.Sleeping -> Pose.Sleepy
+    Mood.Dancing -> Pose.Dancing
+    Mood.Moment -> when (brain.moment) {
+        MascotBrain.Moment.LookAround -> Pose.Neutral.copy(brows = Brows.Calm)
+        MascotBrain.Moment.Stretch -> Pose.Neutral.copy(eyes = Eyes.Closed, mouth = Mouth.Open, armLeft = 165f, armRight = 165f, squash = 1.05f, lift = 1.5f)
+        MascotBrain.Moment.SwordPractice -> if ((t * 1.6f).toInt() % 2 == 0) Pose.SwordReady else Pose.SwordSwing
+        MascotBrain.Moment.Sit -> Pose.Sitting
+        MascotBrain.Moment.HeartHands -> Pose.HeartHands
+        MascotBrain.Moment.Curious -> Pose.Curious
+        MascotBrain.Moment.Thinking -> Pose.Thinking
+    }
 }
 
 /** Procedural motion on top of the blended mood pose. Times in seconds. */
@@ -223,7 +272,7 @@ private class Motion {
     var dragVx = 0f
     private var lean = 0f
 
-    fun animate(brain: MascotBrain, t: Float, nowMs: Long, dp: Float): Pose {
+    fun animate(brain: MascotBrain, t: Float, tilt: Float): Pose {
         var p = blended
         // Breathing and a lazy ahoge.
         p = p.copy(squash = p.squash * (1f + 0.012f * sin(t * 2.4f)), ahoge = p.ahoge + 5f * sin(t * 1.7f))
@@ -251,9 +300,31 @@ private class Motion {
             Mood.Falling -> p = p.copy(legLeft = 25f, legRight = 25f, bodyTilt = 6f * sin(t * 7f))
             Mood.Crying -> p = p.copy(headTilt = p.headTilt + 2.5f * sin(t * 18f))
             Mood.Happy -> p = p.copy(bodyTilt = 5f * sin(t * 6f), lift = 2.5f * abs(sin(t * 6f)))
+            Mood.Wander -> {
+                val s = sin(t * 8f)
+                p = p.copy(legLeft = 16f * s, legRight = -16f * s, armLeft = Pose.REST_ARM - 10f * s, armRight = Pose.REST_ARM + 10f * s, lift = abs(s) * 1.1f)
+            }
+            Mood.Dancing -> {
+                // ~110 bpm bob: a step every beat, a sway every two.
+                val beat = t * (110f / 60f) * 2f * PI.toFloat()
+                p = p.copy(
+                    lift = 3f * abs(sin(beat / 2f)), bodyTilt = 8f * sin(beat / 2f), headTilt = -8f * sin(beat / 2f),
+                    armLeft = 40f + 25f * sin(beat), armRight = 40f - 25f * sin(beat),
+                    legLeft = 8f * sin(beat / 2f), legRight = -8f * sin(beat / 2f),
+                )
+            }
+            Mood.Sleeping -> p = p.copy(headTilt = p.headTilt + 3f * sin(t * 1.3f), squash = p.squash * (1f + 0.02f * sin(t * 1.3f)))
+            Mood.Moment -> when (brain.moment) {
+                MascotBrain.Moment.LookAround -> p = p.copy(headTurn = 0.8f * sin(t * 1.8f), headTilt = 4f * sin(t * 0.9f))
+                MascotBrain.Moment.Sit -> p = p.copy(legLeft = 55f + 14f * sin(t * 3f), legRight = 45f + 14f * sin(t * 3f + 1.5f))
+                else -> Unit
+            }
             else -> Unit
         }
-        if (brain.mood != Mood.Held) lean = 0f
+        if (brain.mood != Mood.Held) {
+            lean = 0f
+            if (brain.mood != Mood.Falling) p = p.copy(bodyTilt = p.bodyTilt - tilt * 14f, ahoge = p.ahoge + tilt * 22f)
+        }
         // Landing squash: a quick spring.
         val sinceLanding = t - landedAt
         if (sinceLanding in 0f..0.7f) p = p.copy(squash = p.squash * (1f - 0.2f * exp(-sinceLanding * 8f) * cos(sinceLanding * 20f)))

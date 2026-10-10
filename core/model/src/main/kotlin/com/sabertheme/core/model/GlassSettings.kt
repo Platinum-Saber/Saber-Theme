@@ -30,4 +30,10 @@ data class GlassSettings(
     val showLabels: Boolean = true,
     /** Device tilt moves the light and the wallpaper. */
     val tiltEnabled: Boolean = true,
+    /** The Saber mascot on the search bar. */
+    val mascotEnabled: Boolean = true,
+    val mascotOutfit: MascotOutfit = MascotOutfit.Armor,
 )
+
+/** Mascot outfits; drawn by :feature:mascot. */
+enum class MascotOutfit { Armor, Winter, Casual }

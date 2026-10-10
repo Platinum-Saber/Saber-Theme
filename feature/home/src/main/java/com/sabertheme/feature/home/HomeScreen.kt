@@ -1,5 +1,6 @@
 package com.sabertheme.feature.home
 
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
@@ -129,6 +130,7 @@ fun HomeScreen(
     var menu by remember { mutableStateOf<MenuRequest?>(null) }
     var editing by rememberSaveable { mutableStateOf(false) }
     var searchBounds by remember { mutableStateOf(Rect.Zero) }
+    val covered by remember { derivedStateOf { backgroundBlur() >= 0.999f } }
     val edit = remember { Animatable(0f) }
     val pageVelocity = rememberPageVelocity(pager)
 
@@ -350,7 +352,7 @@ fun HomeScreen(
             )
             Spacer(Modifier.height(Space.s3))
         }
-        if (!editing && openFolder == null) {
+        if (!editing && openFolder == null && !covered) {
             Box(Modifier.fillMaxSize().graphicsLayer { alpha = 1f - maxOf(overlay.value, backgroundBlur()).coerceIn(0f, 1f) }) {
                 companion { searchBounds }
             }

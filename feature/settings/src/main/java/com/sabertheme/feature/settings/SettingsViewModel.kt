@@ -8,6 +8,7 @@ import com.sabertheme.core.data.SettingsRepository
 import com.sabertheme.core.data.WallpaperStore
 import com.sabertheme.core.model.GlassSettings
 import com.sabertheme.core.model.IconStyle
+import com.sabertheme.core.model.MascotOutfit
 import com.sabertheme.core.model.WallpaperChoice
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -74,6 +75,14 @@ class SettingsViewModel @Inject constructor(
 
     fun setShowLabels(show: Boolean) {
         viewModelScope.launch { settingsRepository.setShowLabels(show) }
+    }
+
+    fun setMascotEnabled(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setMascotEnabled(enabled) }
+    }
+
+    fun setMascotOutfit(outfit: MascotOutfit) {
+        viewModelScope.launch { settingsRepository.setMascotOutfit(outfit) }
     }
 
     private companion object {

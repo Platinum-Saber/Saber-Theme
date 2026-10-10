@@ -120,6 +120,7 @@ fun Modifier.glassInteractionTracker(env: GlassEnvironment): Modifier = pointerI
     awaitPointerEventScope {
         while (true) {
             awaitPointerEvent(PointerEventPass.Initial)
+            env.lastInteractionNanos = System.nanoTime()
             env.onInteraction()
         }
     }
