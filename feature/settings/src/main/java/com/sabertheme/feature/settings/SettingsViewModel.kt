@@ -117,6 +117,10 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setMascotOutfit(outfit) }
     }
 
+    fun setDoubleTapLock(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setDoubleTapLock(enabled) }
+    }
+
     private companion object {
         const val TAG = "SettingsViewModel"
     }

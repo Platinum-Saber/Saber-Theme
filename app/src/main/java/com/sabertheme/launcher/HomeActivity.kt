@@ -1,5 +1,6 @@
 package com.sabertheme.launcher
 
+import com.sabertheme.core.data.ScreenLock
 import com.sabertheme.core.widgetdata.WidgetState
 import com.sabertheme.feature.mascot.Outfit
 import com.sabertheme.feature.mascot.MascotLayer
@@ -75,6 +76,7 @@ class HomeActivity : ComponentActivity() {
             val drawer = rememberDrawerState()
             var widgetPickerOpen by rememberSaveable { mutableStateOf(false) }
             val homePressCount by homePresses.collectAsStateWithLifecycle()
+            var lockPrompt by rememberSaveable { mutableStateOf(false) }
             // The mascot dances while anything plays (needs the Media widget's listener access).
             val media by widgets.media.state.collectAsStateWithLifecycle(WidgetState.Loading)
             val musicPlaying = (media as? WidgetState.Ready)?.data?.let { m -> m.now?.playing == true || m.apps.any { it.playing } } == true
@@ -107,11 +109,15 @@ class HomeActivity : ComponentActivity() {
                                 onOpenSettings = settingsPage::open,
                                 onOpenDrawer = { drawer.open(keyboard = it) },
                                 onOpenWidgets = { widgetPickerOpen = true },
+                                onDoubleTapEmpty = {
+                                    if (settings.doubleTapLock && !ScreenLock.lockNow()) lockPrompt = true
+                                },
                                 backgroundBlur = { maxOf(drawer.fraction, settingsPage.fraction) },
                                 resetSignal = homePressCount,
                                 widgetContent = { widget, size, modifier -> WidgetHost(widgets, widget, size, modifier) },
                                 companion = { anchor, alpha ->
-                                    if (settings.mascotEnabled) {
+                                    // Her surface draws above every view: hide her under app-level sheets.
+                                    if (settings.mascotEnabled && !lockPrompt && !widgetPickerOpen) {
                                         MascotLayer(anchor, outfit = Outfit.valueOf(settings.mascotOutfit.name), musicPlaying = { musicPlaying }, alpha = alpha)
                                     }
                                 },
@@ -123,6 +129,7 @@ class HomeActivity : ComponentActivity() {
                         WidgetPicker(widgetPickerOpen, onDismiss = { widgetPickerOpen = false }) { type, size ->
                             viewModel.addWidget(type, size)
                         }
+                        LockPrompt(lockPrompt, onDismiss = { lockPrompt = false })
                         SettingsScreen(
                             settingsPage,
                             settingsViewModel,

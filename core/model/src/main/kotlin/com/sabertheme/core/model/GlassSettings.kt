@@ -33,6 +33,8 @@ data class GlassSettings(
     /** The Saber mascot on the search bar. */
     val mascotEnabled: Boolean = true,
     val mascotOutfit: MascotOutfit = MascotOutfit.Armor,
+    /** Double-tap empty Home space locks the phone (needs the accessibility service). */
+    val doubleTapLock: Boolean = true,
 )
 
 /** Mascot outfits; drawn by :feature:mascot. */

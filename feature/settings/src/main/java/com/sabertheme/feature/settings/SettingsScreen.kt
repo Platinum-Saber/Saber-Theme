@@ -1,5 +1,7 @@
 package com.sabertheme.feature.settings
 
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.sabertheme.core.data.ScreenLock
 import android.app.role.RoleManager
 import android.content.ActivityNotFoundException
 import android.content.Context
@@ -215,6 +217,8 @@ fun SettingsScreen(
                     Group("Home screen") {
                         DefaultHomeRow(state.visible)
                         Divider()
+                        DoubleTapLockRow(state.visible, settings.doubleTapLock, viewModel::setDoubleTapLock)
+                        Divider()
                         SettingRow("Grid") { Value("${HomeLayout.COLUMNS} × ${HomeLayout.ROWS}") }
                     }
 
@@ -230,6 +234,28 @@ fun SettingsScreen(
 }
 
 /** "Default home app": Saber when it holds ROLE_HOME, else a request; tapping when held opens the system chooser. */
+/** Switch plus the accessibility service status (tap the status to open its settings). */
+@Composable
+private fun DoubleTapLockRow(visible: Boolean, enabled: Boolean, onChange: (Boolean) -> Unit) {
+    val context = LocalContext.current
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    // Re-read on every resume: the user enables the service in Android settings.
+    val resumed by lifecycle.currentStateFlow.collectAsStateWithLifecycle()
+    val serviceOn = remember(visible, resumed) { ScreenLock.isEnabled(context) }
+    Column {
+        SettingRow("Double-tap to lock") { GlassSwitch(enabled, onChange) }
+        if (enabled) {
+            BasicText(
+                if (serviceOn) "Accessibility service on" else "Needs Saber's accessibility service · Turn on",
+                Modifier
+                    .padding(bottom = 10.dp)
+                    .clickable(enabled = !serviceOn) { ScreenLock.openSettings(context) },
+                style = Saber.type.captionIcon.copy(color = if (serviceOn) Saber.colors.textSecondary else Saber.colors.accent),
+            )
+        }
+    }
+}
+
 @Composable
 private fun DefaultHomeRow(visible: Boolean) {
     val context = LocalContext.current

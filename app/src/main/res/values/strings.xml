@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Saber</string>
+    <string name="lock_service_description">Lets you double-tap empty space on the Saber home screen to lock the phone. It only turns the screen off: it reads no screen content and receives no events.</string>
     <color name="home_background">#FF0E1424</color>
 </resources>

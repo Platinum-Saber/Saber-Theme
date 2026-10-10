@@ -117,6 +117,8 @@ fun HomeScreen(
     /** Bumped by the Home button: leaves edit mode and closes overlays. */
     resetSignal: Int = 0,
     widgetContent: @Composable (HomeItem.Widget, WidgetSize, Modifier) -> Unit = { widget, _, modifier -> WidgetPlaceholder(widget, modifier) },
+    /** Double tap on empty Home space (not on icons, widgets or the mascot). */
+    onDoubleTapEmpty: () -> Unit = {},
     /** Drawn above pages and dock (the mascot); gets the search pill's window bounds. */
     companion: @Composable (anchor: () -> Rect, alpha: () -> Float) -> Unit = { _, _ -> },
 ) {
@@ -251,7 +253,12 @@ fun HomeScreen(
                     val r = maxOf(overlay.value, backgroundBlur()).coerceIn(0f, 1f) * MAX_CONTENT_BLUR_DP.dp.toPx()
                     renderEffect = if (r > 0.5f) BlurEffect(r, r, TileMode.Decal) else null
                 }
-                .pointerInput(Unit) { detectTapGestures(onLongPress = { if (!editing) homeMenu(it) }) }
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onLongPress = { if (!editing) homeMenu(it) },
+                        onDoubleTap = { if (!editing && menu == null && openFolder == null) onDoubleTapEmpty() },
+                    )
+                }
                 .pointerInput(Unit) {
                     // Swipe up anywhere on home opens the drawer (horizontal drags stay with the pager).
                     val trigger = SWIPE_UP_DP.dp.toPx()

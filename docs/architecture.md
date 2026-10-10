@@ -210,6 +210,10 @@ blurs live. The Tilt effects setting maps onto `env.effects.tilt`.
 - Swipe up anywhere, or tap the search pill, opens the drawer
   (`onOpenDrawer(withKeyboard)`). The Home button (`onNewIntent`) closes
   the drawer, picker and settings and leaves edit mode.
+- Double-tap empty space locks the phone through `LockScreenService` (an
+  accessibility service that only performs the global lock action; see
+  `ScreenLock`). Without the service a sheet explains it and opens
+  Accessibility settings; Settings → Home screen has the switch and status.
 - Long-press empty space: Edit home screen, Widgets (picker), Wallpaper &
   style and Launcher settings (both open Settings). Long-press an app: the
   `AppActions` menu (Remove from home, App info, Uninstall for

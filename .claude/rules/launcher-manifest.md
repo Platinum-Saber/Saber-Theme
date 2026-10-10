@@ -37,6 +37,11 @@ paths:
   The Media widget's resume (`MediaResumer`) binds other apps'
   `MediaBrowserService`s and sends them `MEDIA_BUTTON`; `:core:widgetdata`
   declares `<queries>` for both intents (no `QUERY_ALL_PACKAGES`).
+- `LockScreenService` (`:app`) is an `AccessibilityService` for double-tap
+  to lock: no event types, `canRetrieveWindowContent="false"`, only
+  `GLOBAL_ACTION_LOCK_SCREEN` (keeps biometric unlock, unlike device-admin
+  `lockNow`). The user enables it in Accessibility settings; never add event
+  handling or content reading to it. `ScreenLock` (`:core:data`) bridges it.
 - Exported widgets (`:widgets-glance`): one `GlanceAppWidgetReceiver` per
   widget (`exported="true"`, `APPWIDGET_UPDATE`, provider XML with
   `initialLayout="@layout/glance_default_loading_layout"`), plus
