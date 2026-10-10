@@ -447,6 +447,12 @@ Settings → Mascot: Show Saber, outfit (Armour / Winter / Casual), message clou
   `GlassBlobPainter` (`:core:designsystem`): the same shader look on a
   smooth union of circles and a rounded box, drawn on her surface.
 
+## Security
+See `docs/security.md`: backup rules (layout + settings only), message
+previews hidden while the screen is recorded, capped reads of network and
+provider input, wallpaper name validation, bounded caches, StrictMode in
+debug, and security lint checks as build errors.
+
 ## Design source
 The Figma file "Saber-Theme" (Foundations, Components, Widgets, Icon pack,
 Screens) is the visual source of truth. Frames are 360×780 dp (S23 at ~3x).

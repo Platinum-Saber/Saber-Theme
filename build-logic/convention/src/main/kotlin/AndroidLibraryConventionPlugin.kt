@@ -17,6 +17,7 @@ class AndroidLibraryConventionPlugin : Plugin<Project> {
                 sourceCompatibility = JAVA_VERSION
                 targetCompatibility = JAVA_VERSION
             }
+            lint { error += SECURITY_LINT_ERRORS }
         }
         configureKotlinAndroid()
     }

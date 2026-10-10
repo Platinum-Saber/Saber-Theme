@@ -20,6 +20,19 @@ internal object Sdk {
 
 internal val JAVA_VERSION = JavaVersion.VERSION_17
 
+/**
+ * Lint checks that guard against leaks and outside access (docs/security.md):
+ * these fail the build instead of warning. Intentional cases carry a
+ * `tools:ignore` with the reason.
+ */
+internal val SECURITY_LINT_ERRORS = setOf(
+    "ExportedReceiver", "ExportedService", "ExportedContentProvider", "ExportedPreferenceActivity",
+    "UnsafeIntentLaunch", "UnspecifiedRegisterReceiverFlag", "MutableImplicitPendingIntent",
+    "UnsafeProtectedBroadcastReceiver", "DataExtractionRules", "HardcodedDebugMode",
+    "TrustAllX509TrustManager", "InsecureBaseConfiguration", "SetJavaScriptEnabled",
+    "WorldReadableFiles", "WorldWriteableFiles", "SecureRandom", "PackageManagerGetSignatures",
+)
+
 /** AGP 9 compiles Kotlin itself (built-in Kotlin); this only sets options and test deps. */
 internal fun Project.configureKotlinAndroid() {
     extensions.configure<KotlinAndroidProjectExtension> {

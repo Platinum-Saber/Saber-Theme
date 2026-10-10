@@ -4,6 +4,12 @@ paths:
 ---
 # Launcher manifest rules
 
+- Security baseline is `docs/security.md`. Backups carry only
+  `datastore/settings.preferences_pb` (`data_extraction_rules.xml`): put
+  anything device-only or sensitive in another file, never in that store.
+  `network_security_config.xml` keeps HTTPS + system CAs only. New exported
+  components need a reason in a comment; security lint checks fail the build.
+
 - The home activity needs an intent filter with `MAIN` + `HOME` + `DEFAULT`
   categories, `launchMode="singleTask"`, and should survive config changes
   without recreating (handle orientation/density in Compose state).
@@ -18,7 +24,8 @@ paths:
   the whole window over the keyboard.
 - Permissions are declared in the module that uses them (manifests merge),
   each with a comment saying which feature needs it:
-  - `:app`: `VIBRATE`, `REQUEST_DELETE_PACKAGES` (Uninstall in the app menu).
+  - `:app`: `VIBRATE`, `REQUEST_DELETE_PACKAGES` (Uninstall in the app menu),
+    `DETECT_SCREEN_RECORDING` (hide message previews while recorded).
   - `:core:widgetdata`: `INTERNET` + `ACCESS_COARSE_LOCATION` (weather,
     coarse only), `READ_CALENDAR`.
   - `:feature:drawer`: `READ_CONTACTS` (search; asked from an inline row).

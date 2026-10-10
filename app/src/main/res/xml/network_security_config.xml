@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  HTTPS only, system CAs only (the weather API is the only network use).
+  Spelled out so a dependency's manifest can't quietly allow cleartext or
+  user-installed CAs.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
