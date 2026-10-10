@@ -21,7 +21,8 @@
     </queries>
 
     <application>
-        <!-- Only exists so MediaSessionManager.getActiveSessions accepts us; no notifications are read. -->
+        <!-- Lets MediaSessionManager.getActiveSessions accept us; also reads WhatsApp notifications
+             (only) for the mascot's message cloud. -->
         <service
             android:name=".MediaListenerService"
             android:exported="true"

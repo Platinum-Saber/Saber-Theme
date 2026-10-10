@@ -29,11 +29,11 @@ paths:
     VLC; asked by tapping the artwork badge, needs "Allow all").
   Runtime permissions are only requested from a visible "Allow" control,
   never at startup.
-- `MediaListenerService` (`:core:widgetdata`) is a `NotificationListenerService`
-  that reads nothing; being enabled is what lets `MediaSessionManager`
-  return sessions. Keep it `exported="true"` with
-  `BIND_NOTIFICATION_LISTENER_SERVICE`, and never add notification reading
-  without a product decision.
+- `MediaListenerService` (`:core:widgetdata`) is a `NotificationListenerService`;
+  being enabled is what lets `MediaSessionManager` return sessions. Keep it
+  `exported="true"` with `BIND_NOTIFICATION_LISTENER_SERVICE`. It reads
+  WhatsApp notifications only (`ChatNotifications`, for the mascot's message
+  cloud); reading any other app's needs a product decision.
   The Media widget's resume (`MediaResumer`) binds other apps'
   `MediaBrowserService`s and sends them `MEDIA_BUTTON`; `:core:widgetdata`
   declares `<queries>` for both intents (no `QUERY_ALL_PACKAGES`).

@@ -10,6 +10,7 @@ import android.media.session.PlaybackState
 import android.os.Handler
 import android.os.Looper
 import android.service.notification.NotificationListenerService
+import android.service.notification.StatusBarNotification
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
@@ -22,8 +23,28 @@ import kotlinx.coroutines.flow.shareIn
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Never reads notifications; being enabled is what grants media-session access. */
-class MediaListenerService : NotificationListenerService()
+/**
+ * Being enabled is what grants media-session access. It also reads WhatsApp
+ * notifications (and no others) into [ChatNotifications] for the mascot's
+ * message cloud.
+ */
+class MediaListenerService : NotificationListenerService() {
+    override fun onListenerConnected() {
+        ChatNotifications.reset(runCatching { activeNotifications.toList() }.getOrNull().orEmpty())
+    }
+
+    override fun onListenerDisconnected() {
+        ChatNotifications.reset(emptyList())
+    }
+
+    override fun onNotificationPosted(sbn: StatusBarNotification?) {
+        sbn?.let(ChatNotifications::post)
+    }
+
+    override fun onNotificationRemoved(sbn: StatusBarNotification?) {
+        sbn?.let { ChatNotifications.remove(it.key) }
+    }
+}
 
 data class MediaData(
     val title: String,
