@@ -60,7 +60,7 @@ fun WidgetPreview(type: WidgetType, size: WidgetSize, modifier: Modifier = Modif
             WidgetType.Weather -> WeatherContent(size, Samples.weather)
             WidgetType.Calendar -> CalendarContent(size, Samples.calendar, is24Hour = true)
             WidgetType.Battery -> BatteryContent(size, BatteryData(82, charging = false))
-            WidgetType.Media -> MediaContent(size, Samples.media, {}, {}, {}, {}, {})
+            WidgetType.Media -> MediaContent(size, Samples.media, {}, {}, {}, {}, {}, {})
         }
     }
 }

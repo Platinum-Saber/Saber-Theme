@@ -82,6 +82,7 @@ fun WidgetHost(sources: WidgetSources, widget: HomeItem.Widget, size: WidgetSize
                     onNext = sources.media::next,
                     onSelect = sources.media::select,
                     onCycle = sources.media::cycle,
+                    onAllowThumbnails = { allow(WidgetPermission.Videos) },
                 )
             }
         }
@@ -131,6 +132,7 @@ private fun rememberAllowRequest(permissions: WidgetPermissions): (WidgetPermiss
             when (permission) {
                 WidgetPermission.Calendar -> Manifest.permission.READ_CALENDAR
                 WidgetPermission.Location -> Manifest.permission.ACCESS_COARSE_LOCATION
+                WidgetPermission.Videos -> Manifest.permission.READ_MEDIA_VIDEO
                 WidgetPermission.NotificationListener -> null
             }?.let {
                 asked = it

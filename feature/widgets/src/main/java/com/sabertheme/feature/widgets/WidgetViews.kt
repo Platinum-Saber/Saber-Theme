@@ -327,6 +327,7 @@ internal fun MediaContent(
     onNext: () -> Unit,
     onSelect: (String) -> Unit,
     onCycle: () -> Unit,
+    onAllowThumbnails: () -> Unit,
 ) {
     val colors = Saber.colors
     val type = Saber.type
@@ -342,7 +343,7 @@ internal fun MediaContent(
     if (size.spanY >= 2) {
         Column(Modifier.fillMaxSize()) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Artwork(media?.art, state.selected, 64.dp)
+                Artwork(media?.art, state.selected, 64.dp, onAllowThumbnails.takeIf { media?.needsVideoPermission == true })
                 Column(Modifier.weight(1f)) {
                     Label(title, type.titleMedium, colors.textPrimary)
                     Label(subtitle, type.labelMedium, colors.textSecondary)
@@ -363,7 +364,7 @@ internal fun MediaContent(
     } else {
         val nextApp = state.apps.getOrNull((state.apps.indexOfFirst { it.packageName == state.selected } + 1).mod(state.apps.size.coerceAtLeast(1)))
         Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Artwork(media?.art, state.selected, 48.dp)
+            Artwork(media?.art, state.selected, 48.dp, onAllowThumbnails.takeIf { media?.needsVideoPermission == true })
             // No room for chips: tapping the text switches to the next app.
             val cycle = if (state.apps.size > 1 && nextApp != null) {
                 Modifier
@@ -406,7 +407,7 @@ private fun AppChip(app: MediaApp, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun Artwork(art: Bitmap?, packageName: String?, size: Dp) {
+private fun Artwork(art: Bitmap?, packageName: String?, size: Dp, onAllow: (() -> Unit)? = null) {
     val shape = RoundedCornerShape(12.dp)
     val context = LocalContext.current
     val px = with(LocalDensity.current) { size.roundToPx() }
@@ -415,10 +416,32 @@ private fun Artwork(art: Bitmap?, packageName: String?, size: Dp) {
             runCatching { context.packageManager.getApplicationIcon(pkg).toBitmap(px, px).asImageBitmap() }.getOrNull()
         }
     }
-    if (image != null) {
-        Image(image, null, Modifier.size(size).clip(shape), contentScale = ContentScale.Crop)
+    // Thumbnails need a permission: the art itself is the "Allow" control.
+    val allow = if (onAllow != null) {
+        Modifier
+            .semantics { contentDescription = "Show video thumbnails" }
+            .clickable(onClick = onAllow)
     } else {
-        Box(Modifier.size(size).clip(shape).background(Brush.linearGradient(listOf(Color(0xFF5B7CFA), Color(0xFFE2557A)))))
+        Modifier
+    }
+    Box(Modifier.size(size).clip(shape).then(allow)) {
+        if (image != null) {
+            Image(image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        } else {
+            Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF5B7CFA), Color(0xFFE2557A)))))
+        }
+        if (onAllow != null) {
+            Box(
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(4.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(Saber.colors.accent)
+                    .padding(3.dp),
+            ) {
+                Glyph(UiGlyph.WALLPAPER, size / 5, Color.White)
+            }
+        }
     }
 }
 
@@ -442,6 +465,7 @@ internal fun PermissionPrompt(size: WidgetSize, permission: WidgetPermission, on
         WidgetPermission.Calendar -> "Show your next events"
         WidgetPermission.Location -> "Weather for your area"
         WidgetPermission.NotificationListener -> "Control what's playing"
+        WidgetPermission.Videos -> "Show video thumbnails"
     }
     if (size.spanY == 1) {
         Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

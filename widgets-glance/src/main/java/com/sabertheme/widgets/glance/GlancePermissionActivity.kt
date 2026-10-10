@@ -35,6 +35,7 @@ class GlancePermissionActivity : ComponentActivity() {
         val permission = when (intent.getStringExtra(EXTRA_PERMISSION)?.let { name -> WidgetPermission.entries.firstOrNull { it.name == name } }) {
             WidgetPermission.Calendar -> Manifest.permission.READ_CALENDAR
             WidgetPermission.Location -> Manifest.permission.ACCESS_COARSE_LOCATION
+            WidgetPermission.Videos -> Manifest.permission.READ_MEDIA_VIDEO
             WidgetPermission.NotificationListener, null -> null
         }
         if (permission == null) {

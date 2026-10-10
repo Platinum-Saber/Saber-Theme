@@ -27,11 +27,15 @@ class WidgetPermissions @Inject constructor(@ApplicationContext private val cont
 
     fun recheck() = generation.update { it + 1 }
 
+    /** Ticks on every [recheck], for sources that use a permission optionally. */
+    val changes: Flow<Int> = generation
+
     fun granted(permission: WidgetPermission): Boolean = when (permission) {
         WidgetPermission.Calendar -> has(Manifest.permission.READ_CALENDAR)
         WidgetPermission.Location -> has(Manifest.permission.ACCESS_COARSE_LOCATION)
         WidgetPermission.NotificationListener ->
             context.packageName in NotificationManagerCompat.getEnabledListenerPackages(context)
+        WidgetPermission.Videos -> has(Manifest.permission.READ_MEDIA_VIDEO)
     }
 
     /** [ready] while [permission] is granted, [WidgetState.NeedsPermission] otherwise. */

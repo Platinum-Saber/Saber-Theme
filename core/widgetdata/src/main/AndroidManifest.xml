@@ -6,6 +6,9 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- Calendar widget: upcoming instances. -->
     <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <!-- Media widget: thumbnails of videos played in VLC, whose own artwork provider
+         only serves the system. Asked from the widget artwork, never at startup. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
 
     <!-- Media widget resume (MediaResumer): find apps' browser services and media-button receivers. -->
     <queries>

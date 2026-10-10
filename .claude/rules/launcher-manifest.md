@@ -25,6 +25,8 @@ paths:
   - `:feature:widgets` + `:widgets-glance`: `SET_ALARM` (normal; One UI's
     `SHOW_ALARMS` handler demands it, or Clock/Alarm taps throw
     `SecurityException`).
+  - `:core:widgetdata`: `READ_MEDIA_VIDEO` (Media widget thumbnails for
+    VLC; asked by tapping the artwork badge, needs "Allow all").
   Runtime permissions are only requested from a visible "Allow" control,
   never at startup.
 - `MediaListenerService` (`:core:widgetdata`) is a `NotificationListenerService`

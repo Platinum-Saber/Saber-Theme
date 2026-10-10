@@ -12,7 +12,7 @@ sealed interface WidgetState<out T> {
     data class Error(val message: String) : WidgetState<Nothing>
 }
 
-enum class WidgetPermission { Calendar, Location, NotificationListener }
+enum class WidgetPermission { Calendar, Location, NotificationListener, Videos }
 
 interface WidgetDataSource<T> {
     /** Hot while collected; replays the latest state to new collectors. */

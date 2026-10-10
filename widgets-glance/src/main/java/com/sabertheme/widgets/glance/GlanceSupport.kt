@@ -169,6 +169,7 @@ private fun permissionMessage(permission: WidgetPermission) = when (permission) 
     WidgetPermission.Calendar -> "Show your next events"
     WidgetPermission.Location -> "Weather for your area"
     WidgetPermission.NotificationListener -> "Control what's playing"
+    WidgetPermission.Videos -> "Show video thumbnails"
 }
 
 private fun allowAction(context: Context, permission: WidgetPermission): Action =

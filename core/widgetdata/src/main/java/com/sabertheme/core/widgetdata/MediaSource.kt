@@ -13,6 +13,8 @@ import android.service.notification.NotificationListenerService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
@@ -30,6 +32,8 @@ data class MediaData(
     val art: Bitmap?,
     val playing: Boolean,
     val packageName: String,
+    /** VLC-style app whose thumbnails need READ_MEDIA_VIDEO, not granted yet. */
+    val needsVideoPermission: Boolean = false,
 )
 
 /** A switcher entry (installed apps from [MediaSource.SWITCHER_APPS] only). */
@@ -52,7 +56,7 @@ data class MediaState(val now: MediaData?, val apps: List<MediaApp>, val selecte
 @Singleton
 class MediaSource @Inject constructor(
     @ApplicationContext private val context: Context,
-    permissions: WidgetPermissions,
+    private val permissions: WidgetPermissions,
     scope: WidgetScope,
     private val resumer: MediaResumer,
 ) : WidgetDataSource<MediaState> {
@@ -67,6 +71,9 @@ class MediaSource @Inject constructor(
     private var pick: String? = null
     private var wasPlaying: Set<String> = emptySet()
     private var publish: () -> Unit = {}
+    private val art = MediaArt(context.contentResolver)
+    private val artLoading = mutableSetOf<String>()
+    private var loadArt: (String) -> Unit = {}
 
     override val state: Flow<WidgetState<MediaState>> = permissions
         .gated(WidgetPermission.NotificationListener) { sessions() }
@@ -121,6 +128,18 @@ class MediaSource @Inject constructor(
             override fun onSessionDestroyed() = publish()
         }
 
+        loadArt = { key ->
+            if (artLoading.add(key)) {
+                launch(Dispatchers.IO) {
+                    if (key.startsWith(LOCAL)) art.loadLocal(key.removePrefix(LOCAL)) else art.load(key)
+                    withContext(Dispatchers.Main) {
+                        artLoading.remove(key)
+                        publish()
+                    }
+                }
+            }
+        }
+
         publish = {
             val list = controllers.map { MediaPicker.Session(it.packageName, it.isPlaying()) }
             val result = MediaPicker.pick(list, pick, wasPlaying)
@@ -141,6 +160,9 @@ class MediaSource @Inject constructor(
             publish()
         }
 
+        // A video-permission grant should show thumbnails without waiting for a track change.
+        launch { permissions.changes.collect { publish() } }
+
         val changes = MediaSessionManager.OnActiveSessionsChangedListener { track(it) }
         try {
             sessions.addOnActiveSessionsChangedListener(changes, listener, main)
@@ -153,6 +175,7 @@ class MediaSource @Inject constructor(
             controllers.forEach { it.unregisterCallback(callback) }
             controllers = emptyList()
             publish = {}
+            loadArt = {}
         }
     }.flowOn(Dispatchers.Main)
 
@@ -169,12 +192,24 @@ class MediaSource @Inject constructor(
         val title = meta.getString(MediaMetadata.METADATA_KEY_TITLE)?.takeIf { it.isNotBlank() } ?: return null
         val artist = meta.getString(MediaMetadata.METADATA_KEY_ARTIST)
             ?: meta.getString(MediaMetadata.METADATA_KEY_ALBUM_ARTIST).orEmpty()
-        val art = meta.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART) ?: meta.getBitmap(MediaMetadata.METADATA_KEY_ART)
-        return MediaData(title, artist, label(c.packageName).orEmpty(), art, c.isPlaying(), c.packageName)
+        // Better art loads async and wins once cached: the app's own artwork URI, or for
+        // LOCAL_ART_APPS the media store thumbnail of the same-titled video.
+        val local = c.packageName in LOCAL_ART_APPS
+        val videos = local && permissions.granted(WidgetPermission.Videos)
+        val key = if (videos) art.localKey(title) else art.uriOf(meta)
+        if (key != null && art.needsLoad(key)) loadArt(if (videos) LOCAL + title else key)
+        val image = key?.let(art::cached)
+            ?: meta.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
+            ?: meta.getBitmap(MediaMetadata.METADATA_KEY_ART)
+        return MediaData(title, artist, label(c.packageName).orEmpty(), image, c.isPlaying(), c.packageName, needsVideoPermission = local && !videos)
     }
 
     companion object {
         /** Apps offered in the widget's switcher, in order. */
         val SWITCHER_APPS = listOf("com.spotify.music", "org.videolan.vlc")
+
+        /** Apps whose art comes from the media store by title (see MediaArt). */
+        private val LOCAL_ART_APPS = setOf("org.videolan.vlc")
+        private const val LOCAL = "local:"
     }
 }

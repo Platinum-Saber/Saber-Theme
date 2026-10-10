@@ -294,6 +294,13 @@ blurs live. The Tilt effects setting maps onto `env.effects.tilt`.
   focus requests from apps started in the background, so focus alone left
   both playing. VLC can report PLAYING after losing focus; the explicit pause
   also clears that.
+- Media artwork (`MediaArt`): a session's artwork URI wins over its bitmap
+  when readable; images are decoded at 384 px with letterbox bars trimmed
+  (`LetterboxTrim`, tested). VLC puts its cone in ALBUM_ART and its
+  ArtworkProvider only serves VLC, the system and platform-signed apps, so
+  for VLC the widget looks up the same-titled video in MediaStore and uses
+  `loadThumbnail` (needs `READ_MEDIA_VIDEO`; until granted the artwork shows
+  a badge that asks for it).
 - `WidgetCatalog` (title, category, permission) and `WidgetPreview` (sample
   data) feed `WidgetPicker`: category chips, every type at every size, tap
   to add at the first free spot from the current page.
