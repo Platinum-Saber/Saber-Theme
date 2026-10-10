@@ -25,7 +25,7 @@
 - Untested: double-tap on an icon does NOT lock (the phone was locked during the check); Glance non-default sizes and the worker firing naturally; contacts search with the grant; locked-profile slots; Media 4x1 title-cycle on a live widget.
 
 ## Open items (priority order)
-1. Calendar `PROVIDER_CHANGED` → Glance calendar refresh (missing in `WidgetUpdateReceiver`).
+1. ~~Calendar `PROVIDER_CHANGED` → Glance calendar refresh~~: done (`CalendarChangeReceiver`); confirm with a real event edit.
 2. Dock doesn't open a gap while dragging; locked-profile slots look empty; "Done" text contrast; `AppRepository.installed` collected twice.
 3. Glance: battery only refreshes via the worker; widgets stale after a permission change until the process restarts; no Glance Media widget.
 4. Mascot: sinks into the bar when sitting/sleeping; ideas — seasonal outfit, time-of-day/charging reactions.

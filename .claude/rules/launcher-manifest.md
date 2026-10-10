@@ -48,6 +48,9 @@ paths:
   `WidgetUpdateReceiver` (`exported="false"`) for exempt implicit
   broadcasts only (TIME_SET, TIMEZONE_CHANGED, LOCALE_CHANGED,
   NEXT_ALARM_CLOCK_CHANGED); it checks the action before acting.
+  `CalendarChangeReceiver` is `exported="true"` because the calendar
+  provider's app sends `PROVIDER_CHANGED` (data `content://com.android.calendar`);
+  it checks action and authority and only redraws the calendar widget.
   `GlancePermissionActivity` is translucent and `exported="false"`.
   `WidgetRefreshWorker` is WorkManager (no manifest entry). Tap targets
   without data (`SHOW_ALARMS`, `POWER_USAGE_SUMMARY`) need `<queries>`

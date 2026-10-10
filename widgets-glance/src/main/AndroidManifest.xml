@@ -84,6 +84,17 @@
             </intent-filter>
         </receiver>
 
+        <!-- Calendar edits: sent by the calendar provider's app (flagged for background
+             receivers), so exported; it only redraws the calendar widget. -->
+        <receiver
+            android:name=".CalendarChangeReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.PROVIDER_CHANGED" />
+                <data android:scheme="content" android:host="com.android.calendar" />
+            </intent-filter>
+        </receiver>
+
         <!-- "Tap to allow" on a widget: asks for the permission without opening Saber's home. -->
         <activity
             android:name=".GlancePermissionActivity"

@@ -339,7 +339,9 @@ weather cache.
   `SaberGlanceWidgets.onAppStart` (from `SaberApp`) enqueues it and
   publishes picker previews once per install (`setWidgetPreviews`,
   API 35+). `WidgetUpdateReceiver` handles exempt broadcasts (time set,
-  time zone, locale, next alarm changed).
+  time zone, locale, next alarm changed). `CalendarChangeReceiver`
+  (exported: the calendar provider is another app) redraws the calendar
+  widget on `PROVIDER_CHANGED` for `content://com.android.calendar`.
 - NeedsPermission shows "Tap to allow" → `GlancePermissionActivity`
   (translucent, not exported): requests the permission or opens app info,
   then `updateAll`.
