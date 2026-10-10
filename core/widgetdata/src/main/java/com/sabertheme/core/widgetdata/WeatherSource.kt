@@ -124,7 +124,7 @@ class WeatherSource @Inject constructor(
             connection.connectTimeout = 10_000
             connection.readTimeout = 10_000
             if (connection.responseCode != HttpURLConnection.HTTP_OK) throw IOException("HTTP ${connection.responseCode}")
-            connection.inputStream.bufferedReader().use { it.readText() }
+            connection.inputStream.use { String(it.readCapped(MAX_BODY_BYTES), Charsets.UTF_8) }
         } finally {
             connection.disconnect()
         }
@@ -162,5 +162,8 @@ class WeatherSource @Inject constructor(
         val REFRESH_MS = TimeUnit.MINUTES.toMillis(30)
         val RETRY_MS = TimeUnit.MINUTES.toMillis(5)
         val MAX_FIX_AGE_MS = TimeUnit.HOURS.toMillis(3)
+
+        /** A forecast is ~10 KB. */
+        const val MAX_BODY_BYTES = 512 * 1024
     }
 }

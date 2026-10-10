@@ -54,14 +54,14 @@ class WallpaperStore @Inject constructor(@ApplicationContext private val context
     }
 
     suspend fun load(fileName: String): Bitmap? = withContext(Dispatchers.IO) {
-        val file = File(dir, fileName)
-        if (!file.isFile) null else BitmapFactory.decodeFile(file.path)
+        val file = photoFile(fileName)
+        if (file == null || !file.isFile) null else BitmapFactory.decodeFile(file.path)
     }
 
     /** Small preview for pickers. */
     suspend fun thumbnail(fileName: String, targetWidth: Int): Bitmap? = withContext(Dispatchers.IO) {
-        val file = File(dir, fileName)
-        if (!file.isFile) return@withContext null
+        val file = photoFile(fileName)
+        if (file == null || !file.isFile) return@withContext null
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(file.path, bounds)
         val sample = Integer.highestOneBit((bounds.outWidth / targetWidth.coerceAtLeast(1)).coerceAtLeast(1))
@@ -69,8 +69,8 @@ class WallpaperStore @Inject constructor(@ApplicationContext private val context
     }
 
     suspend fun delete(fileName: String) = withContext(Dispatchers.IO) {
-        File(dir, fileName).delete()
-        framingFile(fileName).delete()
+        photoFile(fileName)?.delete()
+        framingFile(fileName)?.delete()
         _photos.value = scan()
         _framings.value = scanFramings()
     }
@@ -78,20 +78,28 @@ class WallpaperStore @Inject constructor(@ApplicationContext private val context
     fun framing(fileName: String): PhotoFraming = _framings.value[fileName] ?: PhotoFraming()
 
     suspend fun saveFraming(fileName: String, framing: PhotoFraming) = withContext(Dispatchers.IO) {
-        framingFile(fileName).writeText(PhotoFraming.encode(framing))
+        val file = framingFile(fileName) ?: return@withContext
+        file.writeText(PhotoFraming.encode(framing))
         _framings.value = scanFramings()
     }
 
     /** Pixel size of a stored photo, without decoding it. */
     suspend fun size(fileName: String): Pair<Int, Int>? = withContext(Dispatchers.IO) {
-        val file = File(dir, fileName)
-        if (!file.isFile) return@withContext null
+        val file = photoFile(fileName)
+        if (file == null || !file.isFile) return@withContext null
         val o = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(file.path, o)
         o.outWidth to o.outHeight
     }
 
-    private fun framingFile(fileName: String) = File(dir, fileName.substringBeforeLast('.') + FRAMING_SUFFIX)
+    /**
+     * A photo this store named, or null for anything else: the name comes from
+     * settings, which a restore could bring back tampered ("../…").
+     */
+    private fun photoFile(fileName: String): File? = if (isStoredName(fileName)) File(dir, fileName) else null
+
+    private fun framingFile(fileName: String): File? =
+        if (isStoredName(fileName)) File(dir, fileName.substringBeforeLast('.') + FRAMING_SUFFIX) else null
 
     private fun scanFramings(): Map<String, PhotoFraming> =
         dir.listFiles { f -> f.isFile && f.name.endsWith(FRAMING_SUFFIX) }.orEmpty().mapNotNull { f ->
@@ -104,8 +112,12 @@ class WallpaperStore @Inject constructor(@ApplicationContext private val context
             .sortedByDescending { it.lastModified() }
             .map { it.name }
 
-    private companion object {
-        const val MAX_EDGE = 3072
-        const val FRAMING_SUFFIX = ".framing"
+    companion object {
+        private const val MAX_EDGE = 3072
+        private const val FRAMING_SUFFIX = ".framing"
+        private val STORED_NAME = Regex("""[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.webp""")
+
+        /** Names [import] gives photos: a random UUID plus `.webp`, nothing else. */
+        internal fun isStoredName(name: String) = STORED_NAME.matches(name)
     }
 }

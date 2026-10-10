@@ -24,13 +24,16 @@ internal class MediaArt(private val resolver: ContentResolver) {
     private val cache = LruCache<String, Bitmap>(8)
     private val failed = mutableSetOf<String>()
 
-    /** content:// or file:// artwork URI of [meta], if any. */
+    /**
+     * content:// artwork URI of [meta], if any. Not file://: that would make us
+     * open whatever path another app names, with our own access.
+     */
     fun uriOf(meta: MediaMetadata): String? = listOf(
         MediaMetadata.METADATA_KEY_ALBUM_ART_URI,
         MediaMetadata.METADATA_KEY_ART_URI,
         MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI,
     ).firstNotNullOfOrNull { meta.getString(it) }
-        ?.takeIf { it.startsWith("content://") || it.startsWith("file://") }
+        ?.takeIf { it.startsWith("content://") }
 
     fun cached(uri: String): Bitmap? = cache.get(uri)
 
@@ -39,7 +42,7 @@ internal class MediaArt(private val resolver: ContentResolver) {
     /** Blocking; call off the main thread. */
     fun load(uri: String): Bitmap? = runCatching {
         // Plain open, not ImageDecoder's typed "image/*" open: VLC's provider only serves openFile.
-        val bytes = resolver.openInputStream(uri.toUri())?.use { it.readBytes() } ?: return@runCatching null
+        val bytes = resolver.openInputStream(uri.toUri())?.use { it.readCapped(MAX_ART_BYTES) } ?: return@runCatching null
         val source = ImageDecoder.createSource(ByteBuffer.wrap(bytes))
         val decoded = ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
             decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
@@ -84,6 +87,9 @@ internal class MediaArt(private val resolver: ContentResolver) {
 
     private companion object {
         const val SIZE = 384
+
+        /** Full-size album art is a few MB at most. */
+        const val MAX_ART_BYTES = 12 * 1024 * 1024
     }
 }
 
