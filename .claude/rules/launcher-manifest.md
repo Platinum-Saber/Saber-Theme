@@ -32,6 +32,9 @@ paths:
   return sessions. Keep it `exported="true"` with
   `BIND_NOTIFICATION_LISTENER_SERVICE`, and never add notification reading
   without a product decision.
+  The Media widget's resume (`MediaResumer`) binds other apps'
+  `MediaBrowserService`s and sends them `MEDIA_BUTTON`; `:core:widgetdata`
+  declares `<queries>` for both intents (no `QUERY_ALL_PACKAGES`).
 - Exported widgets (`:widgets-glance`): one `GlanceAppWidgetReceiver` per
   widget (`exported="true"`, `APPWIDGET_UPDATE`, provider XML with
   `initialLayout="@layout/glance_default_loading_layout"`), plus

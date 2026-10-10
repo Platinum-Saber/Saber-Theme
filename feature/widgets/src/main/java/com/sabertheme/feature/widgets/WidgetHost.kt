@@ -75,7 +75,14 @@ fun WidgetHost(sources: WidgetSources, widget: HomeItem.Widget, size: WidgetSize
         WidgetType.Media -> {
             val media by sources.media.state.collectAsStateWithLifecycle(WidgetState.Loading)
             StateFrame(media, size, modifier, allow, onClick = null) {
-                MediaContent(size, it, sources.media::previous, sources.media::playPause, sources.media::next)
+                MediaContent(
+                    size, it,
+                    onPrevious = sources.media::previous,
+                    onPlayPause = sources.media::playPause,
+                    onNext = sources.media::next,
+                    onSelect = sources.media::select,
+                    onCycle = sources.media::cycle,
+                )
             }
         }
     }

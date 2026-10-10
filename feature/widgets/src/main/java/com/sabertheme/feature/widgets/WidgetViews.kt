@@ -1,5 +1,6 @@
 package com.sabertheme.feature.widgets
 
+import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -56,11 +57,13 @@ import com.sabertheme.core.widgetdata.CalendarData
 import com.sabertheme.core.widgetdata.CalendarEvent
 import com.sabertheme.core.widgetdata.ClockData
 import com.sabertheme.core.widgetdata.HourForecast
-import com.sabertheme.core.widgetdata.MediaData
+import com.sabertheme.core.widgetdata.MediaApp
+import com.sabertheme.core.widgetdata.MediaState
 import com.sabertheme.core.widgetdata.WeatherCondition
 import com.sabertheme.core.widgetdata.WeatherData
 import com.sabertheme.core.widgetdata.WidgetFormat
 import com.sabertheme.core.widgetdata.WidgetPermission
+import androidx.core.graphics.drawable.toBitmap
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -318,23 +321,36 @@ internal fun AlarmContent(size: WidgetSize, alarm: AlarmData, now: LocalDateTime
 @Composable
 internal fun MediaContent(
     size: WidgetSize,
-    media: MediaData?,
+    state: MediaState,
     onPrevious: () -> Unit,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
+    onSelect: (String) -> Unit,
+    onCycle: () -> Unit,
 ) {
     val colors = Saber.colors
     val type = Saber.type
-    val title = media?.title ?: "Nothing playing"
-    val subtitle = media?.let { listOf(it.artist, it.app).filter(String::isNotBlank).joinToString(" · ") }.orEmpty()
+    val media = state.now
+    val resume = state.resumeApp
+    val title = media?.title ?: resume?.label ?: "Nothing playing"
+    val subtitle = when {
+        media != null -> listOf(media.artist, media.app).filter(String::isNotBlank).joinToString(" · ")
+        resume != null -> "Tap play to resume"
+        else -> ""
+    }
     val playing = media?.playing == true
     if (size.spanY >= 2) {
         Column(Modifier.fillMaxSize()) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Artwork(media, 72.dp)
+                Artwork(media?.art, state.selected, 64.dp)
                 Column(Modifier.weight(1f)) {
                     Label(title, type.titleMedium, colors.textPrimary)
                     Label(subtitle, type.labelMedium, colors.textSecondary)
+                }
+                if (state.apps.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp), horizontalAlignment = Alignment.End) {
+                        state.apps.forEach { AppChip(it, it.packageName == state.selected) { onSelect(it.packageName) } }
+                    }
                 }
             }
             Spacer(Modifier.weight(1f))
@@ -345,9 +361,18 @@ internal fun MediaContent(
             }
         }
     } else {
+        val nextApp = state.apps.getOrNull((state.apps.indexOfFirst { it.packageName == state.selected } + 1).mod(state.apps.size.coerceAtLeast(1)))
         Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Artwork(media, 48.dp)
-            Column(Modifier.weight(1f)) {
+            Artwork(media?.art, state.selected, 48.dp)
+            // No room for chips: tapping the text switches to the next app.
+            val cycle = if (state.apps.size > 1 && nextApp != null) {
+                Modifier
+                    .semantics { contentDescription = "Switch to ${nextApp.label}" }
+                    .clickable(remember { MutableInteractionSource() }, indication = null, onClick = onCycle)
+            } else {
+                Modifier
+            }
+            Column(Modifier.weight(1f).then(cycle)) {
                 Label(title, type.labelMedium, colors.textPrimary)
                 if (subtitle.isNotEmpty()) Label(subtitle, type.captionIcon, colors.textSecondary)
             }
@@ -360,12 +385,37 @@ internal fun MediaContent(
     }
 }
 
+/** Switcher pill: accent when selected, with a dot while that app is playing. */
 @Composable
-private fun Artwork(media: MediaData?, size: Dp) {
+private fun AppChip(app: MediaApp, selected: Boolean, onClick: () -> Unit) {
+    val colors = Saber.colors
     val shape = RoundedCornerShape(12.dp)
-    val art = media?.art
-    if (art != null) {
-        val image = remember(art) { art.asImageBitmap() }
+    Row(
+        Modifier
+            .clip(shape)
+            .background(if (selected) colors.accent.copy(alpha = 0.85f) else colors.glassTint.copy(alpha = 0.18f))
+            .semantics { contentDescription = "Control ${app.label}" }
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
+        if (app.playing) Box(Modifier.size(5.dp).clip(RoundedCornerShape(50)).background(if (selected) Color.White else colors.accent))
+        Label(app.label, Saber.type.captionIcon, if (selected) Color.White else colors.textPrimary)
+    }
+}
+
+@Composable
+private fun Artwork(art: Bitmap?, packageName: String?, size: Dp) {
+    val shape = RoundedCornerShape(12.dp)
+    val context = LocalContext.current
+    val px = with(LocalDensity.current) { size.roundToPx() }
+    val image = remember(art, packageName, px) {
+        art?.asImageBitmap() ?: packageName?.let { pkg ->
+            runCatching { context.packageManager.getApplicationIcon(pkg).toBitmap(px, px).asImageBitmap() }.getOrNull()
+        }
+    }
+    if (image != null) {
         Image(image, null, Modifier.size(size).clip(shape), contentScale = ContentScale.Crop)
     } else {
         Box(Modifier.size(size).clip(shape).background(Brush.linearGradient(listOf(Color(0xFF5B7CFA), Color(0xFFE2557A)))))

@@ -281,9 +281,19 @@ blurs live. The Tilt effects setting maps onto `env.effects.tilt`.
 | Calendar | `CalendarContract.Instances`, next 7 days, observer + 5 min ticks | `READ_CALENDAR` |
 | Weather | Open-Meteo (no API key) at a coarse fix; JSON cached 30 min in DataStore `weather` | `ACCESS_COARSE_LOCATION`, `INTERNET` |
 | Battery | sticky `ACTION_BATTERY_CHANGED` | none |
-| Media | `MediaSessionManager` + `MediaListenerService`; play/pause/skip | notification listener access |
+| Media | `MediaSessionManager` + `MediaListenerService`; play/pause/skip; Spotify / VLC switcher (`MediaPicker`), resume via `MediaResumer` | notification listener access |
 | Next alarm | `AlarmManager.nextAlarmClock` + `ACTION_NEXT_ALARM_CLOCK_CHANGED` | none |
 
+- Media switcher: `MediaSource.SWITCHER_APPS` (Spotify, VLC) appear as chips
+  (4x2) or cycle on a title tap (4x1). `MediaPicker` (pure, tested) keeps the
+  user's pick until another app starts playing; otherwise playing first, then
+  most recent. Play on an app without a session resumes it (`MediaResumer`):
+  its `MediaBrowserService` with the recent root hint, then a `MEDIA_BUTTON`
+  play broadcast, then opening the app, 3 s apart. Starting playback pauses
+  the other playing sessions explicitly: Android's AudioHardening ignores
+  focus requests from apps started in the background, so focus alone left
+  both playing. VLC can report PLAYING after losing focus; the explicit pause
+  also clears that.
 - `WidgetCatalog` (title, category, permission) and `WidgetPreview` (sample
   data) feed `WidgetPicker`: category chips, every type at every size, tap
   to add at the first free spot from the current page.

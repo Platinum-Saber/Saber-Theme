@@ -10,7 +10,9 @@ import com.sabertheme.core.widgetdata.CalendarData
 import com.sabertheme.core.widgetdata.CalendarEvent
 import com.sabertheme.core.widgetdata.ClockData
 import com.sabertheme.core.widgetdata.HourForecast
+import com.sabertheme.core.widgetdata.MediaApp
 import com.sabertheme.core.widgetdata.MediaData
+import com.sabertheme.core.widgetdata.MediaState
 import com.sabertheme.core.widgetdata.WeatherCondition
 import com.sabertheme.core.widgetdata.WeatherData
 import com.sabertheme.core.widgetdata.WidgetPermission
@@ -58,12 +60,15 @@ fun WidgetPreview(type: WidgetType, size: WidgetSize, modifier: Modifier = Modif
             WidgetType.Weather -> WeatherContent(size, Samples.weather)
             WidgetType.Calendar -> CalendarContent(size, Samples.calendar, is24Hour = true)
             WidgetType.Battery -> BatteryContent(size, BatteryData(82, charging = false))
-            WidgetType.Media -> MediaContent(size, Samples.media, {}, {}, {})
+            WidgetType.Media -> MediaContent(size, Samples.media, {}, {}, {}, {}, {})
         }
     }
 }
 
 private object Samples {
+    private const val SPOTIFY = "com.spotify.music"
+    private const val VLC = "org.videolan.vlc"
+
     val now: LocalDateTime = LocalDateTime.of(2026, 10, 9, 9, 41)
     val clock = ClockData(now, is24Hour = true)
     val alarm = AlarmData(now.plusDays(1).withHour(6).withMinute(30).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli())
@@ -87,5 +92,9 @@ private object Samples {
             CalendarEvent(3, "Gym", now.withHour(18).withMinute(0), now.withHour(19).withMinute(0), false, 0),
         ),
     )
-    val media = MediaData("Midnight City", "M83", "Spotify", art = null, playing = true)
+    val media = MediaState(
+        now = MediaData("Midnight City", "M83", "Spotify", art = null, playing = true, packageName = SPOTIFY),
+        apps = listOf(MediaApp(SPOTIFY, "Spotify", playing = true, hasSession = true), MediaApp(VLC, "VLC", playing = false, hasSession = true)),
+        selected = SPOTIFY,
+    )
 }
