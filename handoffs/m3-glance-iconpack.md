@@ -1,6 +1,6 @@
 # Handoff: Milestone 3 — Glance widgets + icon-pack APK
 
-**Goal:** Build M3 per `docs/plans/m3-glance-iconpack.md`; **complete** (steps 1–5). No M4 plan exists yet; start from "Open items for M4" below.
+**Goal:** Build M3 per `docs/plans/m3-glance-iconpack.md`; **complete** (steps 1–5). Superseded by `handoffs/m4-mascot-and-polish.md`.
 
 ## Decisions
 - User choices: Glance = Clock, Weather, Calendar, Battery, Next alarm (no Media); icon-pack components dumped from the S23 into `design/icons/components.json`; adaptive icons (opaque `#1A1C22` background + glyph foreground + monochrome layer); icon pack verified in **Lawnchair 15 Beta 3** (Nova dropped, likely unmaintained).
