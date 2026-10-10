@@ -51,6 +51,7 @@ class DrawerViewModel @Inject constructor(
     @OptIn(ExperimentalCoroutinesApi::class)
     val apps: StateFlow<List<LauncherApp>> = appRepository.apps
         .mapLatest { list ->
+            iconResolver.retainOnly(list.mapTo(HashSet()) { it.key })
             val collator = Collator.getInstance()
             list.sortedWith { a, b -> collator.compare(a.label, b.label) }.map { iconResolver.app(it) }
         }

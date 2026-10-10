@@ -20,6 +20,11 @@ class AppIconResolver @Inject constructor(private val apps: AppRepository) {
 
     suspend fun app(entry: AppEntry) = LauncherApp(entry, icon(entry))
 
+    /** Forgets icons of apps no longer installed, so the cache never outgrows the app list. */
+    fun retainOnly(installed: Set<AppKey>) {
+        cache.keys.retainAll(installed)
+    }
+
     private suspend fun resolve(entry: AppEntry): AppIconSource {
         IconMapper.glyphFor(entry.packageName)?.let { return AppIconSource.Glyph(it) }
         val mono = apps.monochromeIcon(entry.key)

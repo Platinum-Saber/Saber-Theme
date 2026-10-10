@@ -22,7 +22,8 @@ import java.nio.ByteBuffer
  */
 internal class MediaArt(private val resolver: ContentResolver) {
     private val cache = LruCache<String, Bitmap>(8)
-    private val failed = mutableSetOf<String>()
+    /** Artwork that wouldn't load; bounded like [cache], so a session cycling URIs can't grow it. */
+    private val failed = LruCache<String, Boolean>(64)
 
     /**
      * content:// artwork URI of [meta], if any. Not file://: that would make us
@@ -37,7 +38,7 @@ internal class MediaArt(private val resolver: ContentResolver) {
 
     fun cached(uri: String): Bitmap? = cache.get(uri)
 
-    fun needsLoad(uri: String) = cache.get(uri) == null && uri !in failed
+    fun needsLoad(uri: String) = cache.get(uri) == null && failed.get(uri) == null
 
     /** Blocking; call off the main thread. */
     fun load(uri: String): Bitmap? = runCatching {
@@ -50,7 +51,7 @@ internal class MediaArt(private val resolver: ContentResolver) {
             decoder.setTargetSize((info.size.width * scale).toInt().coerceAtLeast(1), (info.size.height * scale).toInt().coerceAtLeast(1))
         }
         trimmed(decoded)
-    }.getOrNull().also { if (it != null) cache.put(uri, it) else failed += uri }
+    }.getOrNull().also { if (it != null) cache.put(uri, it) else failed.put(uri, true) }
 
     /**
      * The system thumbnail of the indexed video titled [title] (as VLC reports
@@ -59,7 +60,7 @@ internal class MediaArt(private val resolver: ContentResolver) {
     fun loadLocal(title: String): Bitmap? = runCatching {
         val uri = findVideo(title) ?: return@runCatching null
         trimmed(resolver.loadThumbnail(uri, Size(SIZE, SIZE), null))
-    }.getOrNull().also { val key = localKey(title); if (it != null) cache.put(key, it) else failed += key }
+    }.getOrNull().also { val key = localKey(title); if (it != null) cache.put(key, it) else failed.put(key, true) }
 
     fun localKey(title: String) = "local:$title"
 

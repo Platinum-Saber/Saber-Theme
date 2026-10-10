@@ -2,6 +2,7 @@ package com.sabertheme.launcher
 
 import android.app.Application
 import android.content.Context
+import android.os.StrictMode
 import android.util.Log
 import com.sabertheme.widgets.glance.SaberGlanceWidgets
 import dagger.hilt.android.HiltAndroidApp
@@ -17,6 +18,7 @@ class SaberApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        if (BuildConfig.DEBUG) enableStrictMode()
         scope.launch { SaberGlanceWidgets.onAppStart(this@SaberApp) }
         publishWidgetPreviewsOnce()
     }
@@ -34,6 +36,30 @@ class SaberApp : Application() {
                 Log.w(TAG, "Widget previews not published", e)
             }
         }
+    }
+
+    /**
+     * Debug only: logs (tag StrictMode) leaked streams, cursors, receivers and
+     * activities, unsafe intent launches, cleartext traffic and network on the
+     * main thread. Check with `adb logcat -d | grep StrictMode`.
+     */
+    private fun enableStrictMode() {
+        StrictMode.setThreadPolicy(
+            StrictMode.ThreadPolicy.Builder().detectNetwork().detectCustomSlowCalls().penaltyLog().build(),
+        )
+        StrictMode.setVmPolicy(
+            StrictMode.VmPolicy.Builder()
+                .detectLeakedClosableObjects()
+                .detectLeakedRegistrationObjects()
+                .detectLeakedSqlLiteObjects()
+                .detectActivityLeaks()
+                .detectContentUriWithoutPermission()
+                .detectFileUriExposure()
+                .detectCleartextNetwork()
+                .detectUnsafeIntentLaunch()
+                .penaltyLog()
+                .build(),
+        )
     }
 
     private companion object {
