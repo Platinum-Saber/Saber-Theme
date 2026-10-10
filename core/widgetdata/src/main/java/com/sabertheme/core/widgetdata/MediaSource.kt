@@ -3,6 +3,7 @@ package com.sabertheme.core.widgetdata
 import android.content.ComponentName
 import android.content.Context
 import android.graphics.Bitmap
+import android.app.Notification
 import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
@@ -30,11 +31,26 @@ import javax.inject.Singleton
  */
 class MediaListenerService : NotificationListenerService() {
     override fun onListenerConnected() {
+        ChatNotifications.canceller = ::cancelChats
         ChatNotifications.reset(runCatching { activeNotifications.toList() }.getOrNull().orEmpty())
     }
 
     override fun onListenerDisconnected() {
+        ChatNotifications.canceller = null
         ChatNotifications.reset(emptyList())
+    }
+
+    /** Cancels [keys], then the app's group summary once no chats of it are left. */
+    private fun cancelChats(keys: List<String>) {
+        runCatching { cancelNotifications(keys.toTypedArray()) }
+        val left = runCatching { activeNotifications.toList() }.getOrNull().orEmpty()
+            .filter { it.packageName in ChatNotifications.PACKAGES && it.key !in keys }
+        for (pkg in ChatNotifications.PACKAGES) {
+            val ofPkg = left.filter { it.packageName == pkg }
+            if (ofPkg.isNotEmpty() && ofPkg.all { it.notification.flags and Notification.FLAG_GROUP_SUMMARY != 0 }) {
+                runCatching { cancelNotifications(ofPkg.map { it.key }.toTypedArray()) }
+            }
+        }
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {

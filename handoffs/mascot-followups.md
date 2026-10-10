@@ -25,7 +25,8 @@
 - `core/model/.../GlassSettings.kt`, `core/data/.../SettingsRepository.kt`, `feature/settings/.../SettingsScreen.kt`: the `mascotMessageCloud` toggle.
 
 ## State
-- Plan approved; no code written yet. The tree was clean at 8130f1f, apart from the new plan and handoff files (uncommitted).
+- Done and verified on the S23: finger duel/point, charging guard + glow, WhatsApp feed, glass message cloud (red dot) + Thick-glass preview, drag spring-back.
+- Not verified on device: tapping a chat opens WhatsApp, and flick-to-dismiss (both would touch the owner's real chats; left for the owner to try). The "Message cloud" setting toggle wasn't tried on device either.
 - Earlier open items (calendar PROVIDER_CHANGED refresh, dock gap, etc.) are in `handoffs/m4-mascot-and-polish.md` and come after this work.
 
 ## Next step

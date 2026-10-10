@@ -4,40 +4,52 @@ import android.graphics.Paint
 import android.graphics.Typeface
 import android.text.TextPaint
 import android.text.TextUtils
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
-import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Density
+import com.sabertheme.core.designsystem.glass.GlassBlobPainter
+import com.sabertheme.core.designsystem.glass.GlassEnvironment
+import com.sabertheme.core.designsystem.theme.GlassMaterial
+import com.sabertheme.core.designsystem.theme.SaberColors
 import kotlin.math.exp
+import kotlin.math.pow
 import kotlin.math.sin
+import kotlin.math.sqrt
 
-/** A chat waiting on the phone, as her cloud shows it; [open] opens it in its app. */
-data class CloudMessage(val chat: String, val sender: String?, val text: String, val count: Int, val open: () -> Unit)
+/**
+ * A chat waiting on the phone, as her cloud shows it; [open] opens it in its
+ * app, [dismiss] clears its notification.
+ */
+data class CloudMessage(
+    val chat: String,
+    val sender: String?,
+    val text: String,
+    val count: Int,
+    val open: () -> Unit,
+    val dismiss: () -> Unit,
+)
 
-private val CloudFill = Color(0xFFFDFDFF)
-private val CloudLine = Color(0xFF4A2A1C)
 private val Chat = Color(0xFF25D366)
+private val ChatDeep = Color(0xFF128C4A)
 private val Badge = Color(0xFFE5484D)
-private val TitleInk = Color(0xFF1E1A24)
-private val TextInk = Color(0xFF5B5566)
 
 private const val ROWS = 3
 private const val OPEN_FOR_S = 8f
+private const val FLIGHT_S = 0.7f
+private const val FLICK_DP_S = 900f
+private const val FLICK_DP = 90f
 
 /**
- * The thought cloud beside her while chats are unread: tap it for a preview
- * of the latest ones, tap a row to open that chat. Lives on her surface
- * like the rest of her; [bounds] (layer px) is where the layer puts its
- * touch box. Times are her clock in seconds.
+ * The glass thought cloud beside her while chats are unread: tap it for a
+ * preview of the latest ones, tap a row to open that chat, flick it away to
+ * dismiss them (it drifts apart as it goes). Lives on her surface like the
+ * rest of her; [bounds] (layer px) is where the layer puts its touch box.
+ * Times are her clock in seconds.
  */
 internal class MessageCloud(private val density: Density) {
     var messages: List<CloudMessage> = emptyList()
@@ -49,34 +61,37 @@ internal class MessageCloud(private val density: Density) {
     var bounds = Rect.Zero
         private set
 
+    /** Finger offset while it is being dragged; springs back unless flung. */
+    var drag = Offset.Zero
+    var dragging = false
+
     private var shownAt = -10f
     private var expandedAt = 0f
+    private var lastTime = 0f
     private var tail = Offset.Zero
+    private var flight: Flight? = null
+    private val glass = GlassBlobPainter()
     private var lines: List<Pair<String, String>> = emptyList()
     private var linesFor: List<CloudMessage>? = null
     private var linesWidth = 0f
+
+    /** A flung cloud: where it was, which way it flies, when it went. */
+    private class Flight(val bounds: Rect, val expanded: Boolean, val tail: Offset, val from: Offset, val velocity: Offset, val start: Float)
+
+    private class Shape(val area: Rect, val blobs: FloatArray, val box: Rect?, val radius: Float, val blend: Float)
 
     /** px per sp (TextPaint has its own `density`, so not read inside apply). */
     private val spPx = density.density * density.fontScale
     private val titlePaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        color = TitleInk.toArgb()
         textSize = 14f * spPx
     }
     private val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = TextInk.toArgb()
         textSize = 13f * spPx
     }
     private val headerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        color = Color(0xFF128C4A).toArgb()
         textSize = 12f * spPx
-    }
-    private val badgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        color = android.graphics.Color.WHITE
-        textAlign = Paint.Align.CENTER
-        textSize = 10f * spPx
     }
 
     private fun Float.dp() = this * density.density
@@ -87,8 +102,8 @@ internal class MessageCloud(private val density: Density) {
         val before = messages
         messages = list
         if (list.isEmpty()) expanded = false
-        if (before.isEmpty() && list.isNotEmpty()) shownAt = time
-        val newer = list.isNotEmpty() && (before.isEmpty() || list.first() != before.first() || list.sumOf { it.count } > before.sumOf { it.count })
+        val newer = list.isNotEmpty() &&
+            (before.isEmpty() || list.first().chat != before.first().chat || list.sumOf { it.count } > before.sumOf { it.count })
         if (newer && !expanded) shownAt = time
         return newer
     }
@@ -109,108 +124,173 @@ internal class MessageCloud(private val density: Density) {
         return if (y < rowsTop) null else messages.take(ROWS).getOrNull(((y - rowsTop) / 44f.dp()).toInt())
     }
 
+    /**
+     * The finger let go after a drag at [velocity] (px/s): a flick (fast or
+     * far enough) sends the cloud off and dismisses its chats, returning
+     * true. Otherwise it springs back.
+     */
+    fun release(velocity: Offset, time: Float): Boolean {
+        dragging = false
+        val speed = velocity.getDistance() / density.density
+        val far = drag.getDistance() / density.density
+        if (bounds == Rect.Zero || (speed < FLICK_DP_S && far < FLICK_DP)) return false
+        val v = if (speed >= 300f) velocity else drag / drag.getDistance().coerceAtLeast(1f) * 1_500f.dp()
+        flight = Flight(bounds, expanded, tail, drag, v, time)
+        val gone = messages
+        drag = Offset.Zero
+        expanded = false
+        gone.forEach { it.dismiss() }
+        return true
+    }
+
     /** Places the cloud beside [her] (her box, layer px) or hides it when [visible] is false. */
     fun layout(her: Rect, layerWidth: Float, visible: Boolean, time: Float) {
+        val dt = (time - lastTime).coerceIn(0f, 0.1f)
+        lastTime = time
+        if (!dragging) drag *= exp(-dt * 14f)
         if (expanded && time - expandedAt > OPEN_FOR_S) expanded = false
         if (!visible || messages.isEmpty()) {
             bounds = Rect.Zero
             return
         }
         val margin = 8f.dp()
-        val head = Offset(her.center.x, her.top)
         if (expanded) {
             val width = minOf(260f.dp(), layerWidth - 2 * margin)
             val height = 12f.dp() * 2 + 22f.dp() + 44f.dp() * messages.size.coerceAtMost(ROWS)
             val right = (her.center.x + 30f.dp()).coerceIn(margin + width, layerWidth - margin)
-            val bottom = her.top - 4f.dp()
+            val bottom = her.top - 16f.dp()
             bounds = Rect(right - width, bottom - height, right, bottom)
-            tail = head
+            tail = Offset(her.center.x, her.top + 4f.dp())
         } else {
-            val w = 54f.dp()
-            val h = 40f.dp()
-            val left = if (her.left - w + 14f.dp() >= margin) her.left - w + 14f.dp() else her.right - 14f.dp()
-            val top = her.top - 6f.dp()
+            val w = 56f.dp()
+            val h = 42f.dp()
+            val left = if (her.left - w + 6f.dp() >= margin) her.left - w + 6f.dp() else her.right - 6f.dp()
+            val top = her.top - 30f.dp()
             bounds = Rect(left, top, left + w, top + h)
             // The edge of her head facing the cloud, so the dots stay off her hair.
-            tail = Offset(if (left < her.left) her.left + her.width * 0.2f else her.right - her.width * 0.2f, her.top + her.height * 0.32f)
+            tail = Offset(if (left < her.left) her.left + her.width * 0.2f else her.right - her.width * 0.2f, her.top + her.height * 0.3f)
         }
     }
 
-    /** Draws at [bounds]; [origin] is where this scope's (0, 0) is in the layer. */
-    fun DrawScope.draw(origin: Offset, time: Float) {
+    /**
+     * Draws at [bounds]. [origin] is where this scope's (0, 0) is in the
+     * layer, [window] the layer's origin in the window (for the glass).
+     */
+    fun DrawScope.draw(origin: Offset, window: Offset, time: Float, env: GlassEnvironment, colors: SaberColors) {
+        val windowOffset = window + origin
+        flight?.let { f ->
+            val t = time - f.start
+            if (t >= FLIGHT_S || env.reducedMotion) flight = null else drawFlight(f, t, origin, windowOffset, env, colors)
+        }
         if (bounds == Rect.Zero) return
-        val b = bounds.translate(-origin)
-        val t = tail - origin
-        val bob = if (expanded) 0f else 2f.dp() * sin(time * 2f)
+        val bob = if (expanded || dragging) 0f else 2f.dp() * sin(time * 2f)
+        val shift = drag + Offset(0f, bob) - origin
         val since = time - shownAt
         // Pops in with a little overshoot.
-        val pop = if (since in 0f..0.6f) 1f - exp(-since * 12f) + 0.18f * exp(-since * 6f) * sin(since * 14f) else 1f
-        translate(0f, bob) {
-            scale(pop.coerceAtLeast(0.01f), pivot = b.center) {
-                // Thought dots trailing toward her head.
-                val from = Offset(b.center.x, b.bottom)
-                for ((f, r) in listOf(0.35f to 3.4f, 0.62f to 2.2f)) {
-                    val c = from + (t - from) * f
-                    drawCircle(CloudLine, (r + 1.1f).dp(), c)
-                    drawCircle(CloudFill, r.dp(), c)
-                }
-                if (expanded) drawPreview(b) else drawPuff(b, time)
+        val pop = if (since in 0f..0.6f && !env.reducedMotion) 1f - exp(-since * 12f) + 0.18f * exp(-since * 6f) * sin(since * 14f) else 1f
+        val b = bounds.translate(shift)
+        val s = shape(b, expanded, tail - origin)
+        scale(pop.coerceAtLeast(0.01f), pivot = b.center) {
+            with(glass) {
+                drawGlassBlob(
+                    env, colors, if (expanded) GlassMaterial.Thick else GlassMaterial.Regular, windowOffset,
+                    s.area, s.blobs, s.box, s.radius, s.blend,
+                )
             }
+            if (expanded) drawPreview(b, colors) else drawGlyph(b)
         }
     }
 
-    private fun DrawScope.drawPuff(b: Rect, time: Float) {
-        val puffs = listOf(
-            Offset(0.30f, 0.62f) to 0.36f, Offset(0.55f, 0.40f) to 0.42f, Offset(0.76f, 0.62f) to 0.34f,
-            Offset(0.52f, 0.70f) to 0.34f,
-        )
-        val u = b.height
-        for ((p, r) in puffs) drawCircle(CloudLine, r * u + 1.3f.dp(), Offset(b.left + p.x * b.width, b.top + p.y * b.height))
-        for ((p, r) in puffs) drawCircle(CloudFill, r * u, Offset(b.left + p.x * b.width, b.top + p.y * b.height))
-        // A green chat bubble with typing dots.
-        val c = Offset(b.left + b.width * 0.53f, b.top + b.height * 0.56f)
-        drawCircle(Chat, 9f.dp(), c)
-        drawPath(
-            Path().apply {
-                moveTo(c.x - 7f.dp(), c.y + 4f.dp()); lineTo(c.x - 10f.dp(), c.y + 10f.dp()); lineTo(c.x - 2f.dp(), c.y + 7.5f.dp()); close()
-            },
-            Chat,
-        )
-        for (i in -1..1) {
-            val lift = 1.2f.dp() * sin(time * 6f - i * 0.9f).coerceAtLeast(0f)
-            drawCircle(Color.White, 1.5f.dp(), Offset(c.x + i * 3.6f.dp(), c.y - lift))
+    /** The cloud as glass blobs (plus a box when expanded) and two thought dots toward [tail]. */
+    private fun shape(b: Rect, expanded: Boolean, tail: Offset): Shape {
+        val blobs = ArrayList<Float>(36)
+        val box: Rect?
+        val radius: Float
+        if (expanded) {
+            box = b
+            radius = 18f.dp()
+            val bumps = ((b.width - 2 * radius) / 38f.dp()).toInt().coerceIn(2, 8)
+            val step = (b.width - 2 * radius) / bumps
+            for (i in 0 until bumps) blobs += listOf(b.left + radius + step * (i + 0.5f), b.top + 5f.dp(), step * 0.52f)
+        } else {
+            box = null
+            radius = 0f
+            for ((p, r) in PUFFS) blobs += listOf(b.left + p.x * b.width, b.top + p.y * b.height, r * b.height)
         }
-        val count = messages.sumOf { it.count }
-        val badge = Offset(b.right - 9f.dp(), b.top + 9f.dp())
-        drawCircle(Badge, 8f.dp(), badge)
-        drawCircle(Color.White, 8f.dp(), badge, style = Stroke(1.2f.dp()))
-        val label = if (count > 9) "9+" else count.toString()
-        drawContext.canvas.nativeCanvas.drawText(label, badge.x, badge.y - (badgePaint.ascent() + badgePaint.descent()) / 2f, badgePaint)
+        // Dots start under the cloud on her side and step toward her head.
+        val from = Offset(if (tail.x > b.center.x) b.left + b.width * 0.72f else b.left + b.width * 0.28f, b.bottom + 2f.dp())
+        for ((f, r) in listOf(0.3f to 4f, 0.72f to 2.6f)) {
+            val c = from + (tail - from) * f
+            blobs += listOf(c.x, c.y, r.dp())
+        }
+        var area = b.inflate(10f.dp())
+        for (i in blobs.indices step 3) {
+            val r = blobs[i + 2] + 2f
+            area = Rect(
+                minOf(area.left, blobs[i] - r), minOf(area.top, blobs[i + 1] - r),
+                maxOf(area.right, blobs[i] + r), maxOf(area.bottom, blobs[i + 1] + r),
+            )
+        }
+        return Shape(area, blobs.toFloatArray(), box, radius, if (expanded) 8f.dp() else 3.5f.dp())
     }
 
-    private fun DrawScope.drawPreview(b: Rect) {
-        // A cloud-edged card: scalloped top over a rounded body.
-        val r = 18f.dp()
-        val bumps = ((b.width - 2 * r) / (26f.dp())).toInt().coerceAtLeast(2)
-        val step = (b.width - 2 * r) / bumps
-        for (pass in 0..1) {
-            val color = if (pass == 0) CloudLine else CloudFill
-            val grow = if (pass == 0) 1.3f.dp() else 0f
-            drawRoundRect(color, Offset(b.left - grow, b.top - grow), Size(b.width + 2 * grow, b.height + 2 * grow), CornerRadius(r + grow))
-            for (i in 0 until bumps) {
-                drawCircle(color, step * 0.55f + grow, Offset(b.left + r + step * (i + 0.5f), b.top + 4f.dp()))
+    /** Flung: it keeps going, slowing, while its puffs drift apart, shrink and fade. */
+    private fun DrawScope.drawFlight(f: Flight, t: Float, origin: Offset, windowOffset: Offset, env: GlassEnvironment, colors: SaberColors) {
+        val e = (t / FLIGHT_S).coerceIn(0f, 1f)
+        val ease = 1f - (1f - e).pow(3)
+        val travel = f.from + f.velocity * ((1f - exp(-3f * t)) / 3f)
+        val b = f.bounds.translate(travel - origin)
+        val s = shape(b, f.expanded, f.tail - origin + travel)
+        val c = b.center
+        val blobs = s.blobs.copyOf()
+        for (i in blobs.indices step 3) {
+            var dx = blobs[i] - c.x
+            var dy = blobs[i + 1] - c.y
+            val len = sqrt(dx * dx + dy * dy)
+            if (len < 1f) {
+                dx = if (i % 2 == 0) 1f else -1f
+                dy = -0.4f
+            } else {
+                dx /= len
+                dy /= len
             }
+            val spread = (30f + (i % 4) * 8f).dp() * ease
+            blobs[i] += dx * spread
+            blobs[i + 1] += dy * spread - 12f.dp() * ease
+            blobs[i + 2] *= 1f - 0.55f * ease
         }
+        val shrink = 1f - 0.75f * ease
+        val box = s.box?.let {
+            Rect(it.center.x - it.width / 2f * shrink, it.center.y - it.height / 2f * shrink, it.center.x + it.width / 2f * shrink, it.center.y + it.height / 2f * shrink)
+        }
+        with(glass) {
+            drawGlassBlob(
+                env, colors, if (f.expanded) GlassMaterial.Thick else GlassMaterial.Regular, windowOffset,
+                s.area.inflate(48f.dp()), blobs, box, s.radius * (1f - 0.5f * ease), s.blend * (1f - ease), alpha = 1f - e * e,
+            )
+        }
+    }
+
+    /** Just a small red dot on the cloud: something unread. */
+    private fun DrawScope.drawGlyph(b: Rect) {
+        val dot = Offset(b.right - 10f.dp(), b.top + 10f.dp())
+        drawCircle(Color.White, 5.5f.dp(), dot)
+        drawCircle(Badge, 4.2f.dp(), dot)
+    }
+
+    private fun DrawScope.drawPreview(b: Rect, colors: SaberColors) {
+        titlePaint.color = colors.textPrimary.copy(alpha = 1f).toArgb()
+        textPaint.color = colors.textSecondary.toArgb()
+        headerPaint.color = (if (colors.isDark) Chat else ChatDeep).toArgb()
         val pad = 14f.dp()
         val canvas = drawContext.canvas.nativeCanvas
         val unread = messages.sumOf { it.count }
         canvas.drawText("WhatsApp · $unread unread", b.left + pad, b.top + 12f.dp() + 14f.dp(), headerPaint)
-        val shown = messages.take(ROWS)
         val textWidth = b.width - pad * 2 - 16f.dp()
         if (linesFor !== messages || linesWidth != textWidth) {
             linesFor = messages
             linesWidth = textWidth
-            lines = shown.map { m ->
+            lines = messages.take(ROWS).map { m ->
                 val title = if (m.sender != null) "${m.chat} · ${m.sender}" else m.chat
                 TextUtils.ellipsize(title, titlePaint, textWidth, TextUtils.TruncateAt.END).toString() to
                     TextUtils.ellipsize(m.text.replace('\n', ' '), textPaint, textWidth, TextUtils.TruncateAt.END).toString()
@@ -218,11 +298,19 @@ internal class MessageCloud(private val density: Density) {
         }
         lines.forEachIndexed { i, (title, text) ->
             val top = b.top + 12f.dp() + 22f.dp() + i * 44f.dp()
-            if (i > 0) drawLine(CloudLine.copy(alpha = 0.12f), Offset(b.left + pad, top), Offset(b.right - pad, top), 1f.dp())
+            if (i > 0) drawLine(colors.textPrimary.copy(alpha = 0.12f), Offset(b.left + pad, top), Offset(b.right - pad, top), 1f.dp())
             drawCircle(Chat, 4f.dp(), Offset(b.left + pad + 4f.dp(), top + 15f.dp()))
             val x = b.left + pad + 16f.dp()
             canvas.drawText(title, x, top + 19f.dp(), titlePaint)
             canvas.drawText(text, x, top + 37f.dp(), textPaint)
         }
+    }
+
+    private companion object {
+        /** Collapsed cloud puffs: centre as a fraction of the bounds, radius as a fraction of its height. */
+        val PUFFS = listOf(
+            Offset(0.22f, 0.62f) to 0.25f, Offset(0.42f, 0.40f) to 0.31f, Offset(0.66f, 0.36f) to 0.29f,
+            Offset(0.82f, 0.60f) to 0.23f, Offset(0.52f, 0.68f) to 0.27f,
+        )
     }
 }

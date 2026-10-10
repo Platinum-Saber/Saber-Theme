@@ -62,6 +62,16 @@ object ChatNotifications {
     private val sorted = MutableStateFlow<List<ChatMessage>>(emptyList())
     val messages: StateFlow<List<ChatMessage>> = sorted.asStateFlow()
 
+    /** Cancels notifications by key; set while the listener is connected. */
+    @Volatile internal var canceller: ((List<String>) -> Unit)? = null
+
+    /** Dismisses these chats' notifications on the phone (not read in the app). */
+    fun dismiss(keys: List<String>) {
+        canceller?.invoke(keys)
+        byKey.update { it - keys.toSet() }
+        publish()
+    }
+
     internal fun reset(active: List<StatusBarNotification>) {
         byKey.value = active.mapNotNull { it.toChatMessage() }.associateBy { it.key }
         publish()

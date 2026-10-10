@@ -8,7 +8,6 @@ import android.os.SystemClock
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.foundation.layout.Box
@@ -39,6 +38,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.sabertheme.core.designsystem.glass.LocalGlassEnvironment
+import com.sabertheme.core.designsystem.theme.LocalSaberColors
 import com.sabertheme.feature.mascot.MascotBrain.Mood
 import kotlin.math.abs
 import kotlin.math.atan2
@@ -88,6 +88,7 @@ fun MascotLayer(
     val music by rememberUpdatedState(musicPlaying)
     val currentCharging by rememberUpdatedState(charging)
     val currentMessages by rememberUpdatedState(messages)
+    val currentColors by rememberUpdatedState(LocalSaberColors.current)
     val cloud = remember { MessageCloud(density) }
     var cloudBox by remember { mutableStateOf(Rect.Zero) }
     val currentAnchor by rememberUpdatedState(anchor)
@@ -226,7 +227,7 @@ fun MascotLayer(
             val topLeft = Offset(physics.x - w / 2f, physics.y - h) + origin
             surface.draw(density, topLeft, w, h, currentAlpha()) {
                 drawSaber(pose[0], time, currentOutfit)
-                with(cloud) { draw(topLeft - origin, time) }
+                with(cloud) { draw(topLeft - origin, origin, time, env, currentColors) }
             }
             }
         }
@@ -241,7 +242,7 @@ fun MascotLayer(
             },
     ) {
         if (feet == Offset.Unspecified) return@Box
-        // Her message cloud's tap target: tap to preview, tap a chat to open it.
+        // Her message cloud's touch target: tap to preview, tap a chat to open it, flick it away to dismiss.
         Box(
             Modifier
                 .offset { IntOffset(cloudBox.left.roundToInt(), cloudBox.top.roundToInt()) }
@@ -251,15 +252,37 @@ fun MascotLayer(
                     layout(placeable.width, placeable.height) { placeable.place(0, 0) }
                 }
                 .pointerInput(cloud) {
-                    detectTapGestures { at ->
-                        haptic(HapticFeedbackConstants.CLOCK_TICK)
-                        if (!cloud.expanded) {
-                            cloud.toggle(clock[0])
-                        } else {
-                            val chat = cloud.rowAt(at.y)
-                            cloud.collapse()
-                            chat?.open?.invoke()
+                    awaitEachGesture {
+                        val down = awaitFirstDown()
+                        down.consume()
+                        val tracker = VelocityTracker()
+                        tracker.addPosition(down.uptimeMillis, down.position)
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                            change.consume()
+                            if (!change.pressed) {
+                                if (cloud.dragging) {
+                                    val v = tracker.calculateVelocity()
+                                    if (cloud.release(Offset(v.x, v.y), clock[0])) haptic(HapticFeedbackConstants.CONFIRM)
+                                } else {
+                                    haptic(HapticFeedbackConstants.CLOCK_TICK)
+                                    if (!cloud.expanded) {
+                                        cloud.toggle(clock[0])
+                                    } else {
+                                        val chat = cloud.rowAt(change.position.y)
+                                        cloud.collapse()
+                                        chat?.open?.invoke()
+                                    }
+                                }
+                                break
+                            }
+                            tracker.addPosition(change.uptimeMillis, change.position)
+                            val moved = change.position - down.position
+                            if (!cloud.dragging && moved.getDistance() > viewConfiguration.touchSlop) cloud.dragging = true
+                            if (cloud.dragging) cloud.drag = moved
                         }
+                        cloud.dragging = false
                     }
                 },
         )

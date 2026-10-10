@@ -387,11 +387,11 @@ An interactive chibi Saber (`:feature:mascot`) stands on the right end of the
 Home search bar. `HomeScreen(companion = …)` hosts her and passes the search
 pill's window bounds and a fade (gone within the first quarter of the drawer
 or settings sliding in; hidden in edit mode and under folders and menus).
-Settings → Mascot: Show Saber, outfit (Armour / Winter / Casual).
+Settings → Mascot: Show Saber, outfit (Armour / Winter / Casual), message cloud.
 - **Rig:** `drawSaber(pose, time, outfit)` draws her from vector parts in a
   100 x 140 box (101 dp tall on Home). `Pose` holds angles, squash, lift,
   eyes (white sclera + green iris), brows, mouth, prop (sword, gift, heart
-  hands, chin hand) and effects (tears, zzz, dizzy stars, notes, hearts,
+  hands, chin hand, pointing finger, planted guard), gaze, sword glow and effects (tears, zzz, dizzy stars, notes, hearts,
   sparkles, sweat, sigh, fidget). `Pose.gallery` names 20 expressions; a
   debug-only `MascotGalleryActivity` shows them all per outfit.
 - **Brain** (`MascotBrain`, pure, tested): moods Idle, Surprised (poke),
@@ -400,7 +400,18 @@ Settings → Mascot: Show Saber, outfit (Armour / Winter / Casual).
   speed), Walking (back to her spot), idle Moments every 8–20 s (look
   around, stretch, sword practice, sit, heart hands, curious, thinking),
   Wander, Sleeping (60 s without touches on Home; a touch wakes her with a
-  start), Dancing (any media session playing).
+  start), Dancing (any media session playing), Duel / Point (a finger
+  elsewhere on Home, within 130 dp of her chest / farther; she keeps at it
+  1.4 / 1.8 s after it lifts).
+- **Finger reactions:** `glassInteractionTracker` records the touch
+  position and finger-down in `GlassEnvironment` (observing only). A new
+  touch counts for at least one frame, so quick taps are seen. She faces the
+  finger; the arm aims by `atan2` from her shoulder (capped short of her
+  face; the blade still points at it), and a raised sword or pointing arm
+  is drawn in front of her head.
+- **Charging:** Idle becomes `Pose.Guard` (sword planted, hands on the
+  grip); any drawn sword gets a gold halo, a light band and sparks
+  (`Pose.glow`, eased in and out). From `BatterySource.charging`.
 - **Physics** (`MascotPhysics`, pure, tested): gravity, wall / ceiling /
   floor bounces with damping, the bar as the floor, walking; the first floor
   contact reports the impact speed for the landing reaction.
@@ -422,6 +433,16 @@ Settings → Mascot: Show Saber, outfit (Armour / Winter / Casual).
   target while she moves.
 - **Touch:** a transparent box over her takes tap / long-press / drag;
   everything else passes through to Home.
+- **Message cloud** (`MessageCloud`): while WhatsApp chats are unread
+  (`ChatNotifications`, fed by `MediaListenerService`), a glass thought
+  cloud with a red dot floats beside her; she glances at it when a message
+  arrives. Tap: a Thick-glass preview of the latest 3 chats (closes after
+  8 s or a tap elsewhere); tap a chat to open it (its `contentIntent`, sent
+  with our visible-app start right). Flick the cloud away (> 900 dp/s or
+  90 dp): it flies off and its puffs drift apart and fade, and those
+  notifications are cancelled; a short drag springs back. The glass is
+  `GlassBlobPainter` (`:core:designsystem`): the same shader look on a
+  smooth union of circles and a rounded box, drawn on her surface.
 
 ## Design source
 The Figma file "Saber-Theme" (Foundations, Components, Widgets, Icon pack,

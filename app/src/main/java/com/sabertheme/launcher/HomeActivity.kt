@@ -91,7 +91,13 @@ class HomeActivity : ComponentActivity() {
                 if (!settings.mascotMessageCloud) {
                     emptyList()
                 } else {
-                    chats.map { m -> CloudMessage(m.chat, m.sender, m.text, m.count) { m.openChat(this@HomeActivity) } }
+                    chats.map { m ->
+                        CloudMessage(
+                            m.chat, m.sender, m.text, m.count,
+                            open = { m.openChat(this@HomeActivity) },
+                            dismiss = { ChatNotifications.dismiss(listOf(m.key)) },
+                        )
+                    }
                 }
             }
 
