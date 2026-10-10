@@ -15,9 +15,9 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Launch counts per app, for the drawer's Suggested row. */
+/** Launch counts per app, for the drawer's Suggested row. Device-only: not backed up. */
 @Singleton
-class LaunchStats @Inject constructor(private val store: DataStore<Preferences>) {
+class LaunchStats @Inject constructor(@param:UsageStore private val store: DataStore<Preferences>) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     val counts: Flow<Map<AppKey, Int>> = store.data
@@ -41,7 +41,7 @@ class LaunchStats @Inject constructor(private val store: DataStore<Preferences>)
                 .take(limit)
                 .map { it.key }
 
-        private val COUNTS = stringPreferencesKey("launch_counts")
+        internal val COUNTS = stringPreferencesKey("launch_counts")
 
         /** Bounds the stored map; the least-launched apps drop off. */
         const val MAX_ENTRIES = 64
