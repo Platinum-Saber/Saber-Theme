@@ -7,7 +7,10 @@ import com.sabertheme.core.widgetdata.ChatNotifications
 import com.sabertheme.feature.mascot.CloudMessage
 import com.sabertheme.feature.mascot.MascotLayer
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
+import java.util.function.Consumer
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -62,6 +65,10 @@ class HomeActivity : ComponentActivity() {
     /** Bumped by the Home button while already home; closes the drawer. */
     private val homePresses = MutableStateFlow(0)
 
+    /** Home is visible in a screen recording or share: message previews hide. */
+    private val screenRecorded = MutableStateFlow(false)
+    private val recordingCallback = Consumer<Int> { screenRecorded.value = it == WindowManager.SCREEN_RECORDING_STATE_VISIBLE }
+
     @Inject lateinit var widgets: WidgetSources
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -85,10 +92,11 @@ class HomeActivity : ComponentActivity() {
             // ...and stands guard with a glowing sword while charging.
             val battery by widgets.battery.state.collectAsStateWithLifecycle(WidgetState.Loading)
             val charging = (battery as? WidgetState.Ready)?.data?.charging == true
-            // ...and keeps unread WhatsApp chats in a cloud beside her.
+            // ...and keeps unread WhatsApp chats in a cloud beside her (never while the screen is recorded).
             val chats by ChatNotifications.messages.collectAsStateWithLifecycle()
-            val cloudMessages = remember(chats, settings.mascotMessageCloud) {
-                if (!settings.mascotMessageCloud) {
+            val recorded by screenRecorded.collectAsStateWithLifecycle()
+            val cloudMessages = remember(chats, settings.mascotMessageCloud, recorded) {
+                if (!settings.mascotMessageCloud || recorded) {
                     emptyList()
                 } else {
                     chats.map { m ->
@@ -165,6 +173,21 @@ class HomeActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            val state = windowManager.addScreenRecordingCallback(mainExecutor, recordingCallback)
+            screenRecorded.value = state == WindowManager.SCREEN_RECORDING_STATE_VISIBLE
+        }
+    }
+
+    override fun onStop() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            windowManager.removeScreenRecordingCallback(recordingCallback)
+        }
+        super.onStop()
     }
 
     override fun onNewIntent(intent: Intent) {

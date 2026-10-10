@@ -101,6 +101,9 @@ internal class MessageCloud(private val density: Density) {
         if (list === messages) return false
         val before = messages
         messages = list
+        // Drop the old preview text with the old list, so read or hidden chats don't linger in memory.
+        lines = emptyList()
+        linesFor = null
         if (list.isEmpty()) expanded = false
         val newer = list.isNotEmpty() &&
             (before.isEmpty() || list.first().chat != before.first().chat || list.sumOf { it.count } > before.sumOf { it.count })
