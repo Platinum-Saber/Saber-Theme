@@ -27,6 +27,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -91,6 +92,7 @@ fun MascotLayer(
     // Drawn into [surface], not Compose: plain fields, so animating never invalidates Home.
     val pose = remember { arrayOf(Pose.Neutral) }
     val clock = remember { floatArrayOf(0f) }
+    val touchBox = remember { arrayOf(Offset.Zero) }
     val w = with(density) { MASCOT_WIDTH.toPx() }
     val h = with(density) { MASCOT_HEIGHT.toPx() }
 
@@ -185,11 +187,13 @@ fun MascotLayer(
             Modifier
                 .offset { IntOffset((feet.x - w / 2f).roundToInt(), (feet.y - h).roundToInt()) }
                 .size(MASCOT_WIDTH, MASCOT_HEIGHT)
+                // Where the box actually is in the layer: pointer positions are relative to
+                // this laid-out spot, which lags her physics position while dragging.
+                .onGloballyPositioned { touchBox[0] = it.positionInParent() }
                 .pointerInput(physics) {
                     awaitEachGesture {
                         val down = awaitFirstDown()
                         down.consume()
-                        val topLeft = { Offset(physics.x - w / 2f, physics.y - h) }
                         val tracker = VelocityTracker()
                         val longAt = down.uptimeMillis + viewConfiguration.longPressTimeoutMillis
                         var pressedLong = false
@@ -209,7 +213,7 @@ fun MascotLayer(
                                 continue
                             }
                             val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                            val inLayer = change.position + topLeft()
+                            val inLayer = change.position + touchBox[0]
                             val nowMs = System.nanoTime() / 1_000_000
                             if (!change.pressed) {
                                 change.consume()
