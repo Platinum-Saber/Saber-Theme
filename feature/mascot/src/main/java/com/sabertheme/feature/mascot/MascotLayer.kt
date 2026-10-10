@@ -1,12 +1,12 @@
 package com.sabertheme.feature.mascot
 
+import androidx.compose.ui.viewinterop.AndroidView
 import kotlin.math.PI
 import com.sabertheme.core.designsystem.glass.GlassEnvironment
 import kotlinx.coroutines.delay
 import android.os.PowerManager
 import android.os.SystemClock
 import android.view.HapticFeedbackConstants
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -66,6 +65,8 @@ fun MascotLayer(
     outfit: Outfit = Outfit.Armor,
     /** True while a media session plays: she dances. */
     musicPlaying: () -> Boolean = { false },
+    /** 0..1 fade, e.g. while the drawer opens over Home. */
+    alpha: () -> Float = { 1f },
 ) {
     val density = LocalDensity.current
     val view = LocalView.current
@@ -74,14 +75,18 @@ fun MascotLayer(
     // The frame loop outlives recompositions: read the latest values through these.
     val music by rememberUpdatedState(musicPlaying)
     val currentAnchor by rememberUpdatedState(anchor)
+    val currentAlpha by rememberUpdatedState(alpha)
+    val currentOutfit by rememberUpdatedState(outfit)
+    val surface = remember { MascotSurface(view.context) }
     val physics = remember { MascotPhysics(density.density) }
     val brain = remember { MascotBrain() }
     val motion = remember { Motion() }
     var origin by remember { mutableStateOf(Offset.Zero) }
     var layer by remember { mutableStateOf(IntSize.Zero) }
     var feet by remember { mutableStateOf(Offset.Unspecified) }
-    var pose by remember { mutableStateOf(Pose.Neutral) }
-    var time by remember { mutableFloatStateOf(0f) }
+    // Drawn into [surface], not Compose: plain fields, so animating never invalidates Home.
+    val pose = remember { arrayOf(Pose.Neutral) }
+    val clock = remember { floatArrayOf(0f) }
     val w = with(density) { MASCOT_WIDTH.toPx() }
     val h = with(density) { MASCOT_HEIGHT.toPx() }
 
@@ -108,7 +113,8 @@ fun MascotLayer(
             withFrameNanos { now ->
             val dt = if (last == 0L) 0f else ((now - last) / 1e9f).coerceAtMost(0.05f)
             last = now
-            time += dt
+            clock[0] += dt
+            val time = clock[0]
             val ms = now / 1_000_000
             if (ms - saverCheckedAt > 2_000) {
                 saverCheckedAt = ms
@@ -155,7 +161,8 @@ fun MascotLayer(
             motion.blended = if (env.reducedMotion) target else motion.blended.approach(target, 1f - exp(-dt * POSE_RATE))
             // Lean with the phone: the tilt light moves off its rest direction.
             val tilt = if (env.effects.tilt) (env.light.x - GlassEnvironment.DEFAULT_LIGHT.x).coerceIn(-1f, 1f) else 0f
-            pose = if (env.reducedMotion) motion.blended else motion.animate(brain, time, tilt)
+            pose[0] = if (env.reducedMotion) motion.blended else motion.animate(brain, time, tilt)
+            surface.draw(density, w, h, currentAlpha()) { drawSaber(pose[0], time, currentOutfit) }
             }
         }
     }
@@ -169,7 +176,16 @@ fun MascotLayer(
             },
     ) {
         if (feet == Offset.Unspecified) return@Box
-        Canvas(
+        val pad = MASCOT_HEIGHT * MascotSurface.PAD
+        // Her own surface, composited by the system: animating her redraws only this
+        // small buffer, never Home's glass (which costs ~8 ms of GPU per frame).
+        AndroidView(
+            factory = { surface.view },
+            modifier = Modifier
+                .offset { IntOffset((feet.x - w / 2f - pad.toPx()).roundToInt(), (feet.y - h - pad.toPx()).roundToInt()) }
+                .size(MASCOT_WIDTH + pad * 2, MASCOT_HEIGHT + pad * 2),
+        )
+        Box(
             Modifier
                 .offset { IntOffset((feet.x - w / 2f).roundToInt(), (feet.y - h).roundToInt()) }
                 .size(MASCOT_WIDTH, MASCOT_HEIGHT)
@@ -209,7 +225,7 @@ fun MascotLayer(
                                     }
                                     !pressedLong -> {
                                         brain.poke(nowMs)
-                                        motion.pokedAt = time
+                                        motion.pokedAt = clock[0]
                                         haptic(HapticFeedbackConstants.CLOCK_TICK)
                                     }
                                 }
@@ -234,9 +250,7 @@ fun MascotLayer(
                         }
                     }
                 },
-        ) {
-            drawSaber(pose, time, outfit)
-        }
+        )
     }
 }
 

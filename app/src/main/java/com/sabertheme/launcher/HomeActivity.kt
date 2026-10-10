@@ -109,9 +109,9 @@ class HomeActivity : ComponentActivity() {
                                 backgroundBlur = { maxOf(drawer.fraction, settingsPage.fraction) },
                                 resetSignal = homePressCount,
                                 widgetContent = { widget, size, modifier -> WidgetHost(widgets, widget, size, modifier) },
-                                companion = { anchor ->
+                                companion = { anchor, alpha ->
                                     if (settings.mascotEnabled) {
-                                        MascotLayer(anchor, outfit = Outfit.valueOf(settings.mascotOutfit.name), musicPlaying = { musicPlaying })
+                                        MascotLayer(anchor, outfit = Outfit.valueOf(settings.mascotOutfit.name), musicPlaying = { musicPlaying }, alpha = alpha)
                                     }
                                 },
                             )

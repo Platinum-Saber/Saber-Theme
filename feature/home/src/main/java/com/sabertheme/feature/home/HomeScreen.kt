@@ -118,7 +118,7 @@ fun HomeScreen(
     resetSignal: Int = 0,
     widgetContent: @Composable (HomeItem.Widget, WidgetSize, Modifier) -> Unit = { widget, _, modifier -> WidgetPlaceholder(widget, modifier) },
     /** Drawn above pages and dock (the mascot); gets the search pill's window bounds. */
-    companion: @Composable (anchor: () -> Rect) -> Unit = {},
+    companion: @Composable (anchor: () -> Rect, alpha: () -> Float) -> Unit = { _, _ -> },
 ) {
     val env = LocalGlassEnvironment.current
     val view = LocalView.current
@@ -352,10 +352,10 @@ fun HomeScreen(
             )
             Spacer(Modifier.height(Space.s3))
         }
-        if (!editing && openFolder == null && !covered) {
-            Box(Modifier.fillMaxSize().graphicsLayer { alpha = 1f - maxOf(overlay.value, backgroundBlur()).coerceIn(0f, 1f) }) {
-                companion { searchBounds }
-            }
+        // The companion draws on its own surface above Home: hide it under folders, menus and edit mode.
+        if (!editing && openFolder == null && menu == null && !covered) {
+            // Her surface sits above every view, so she must be gone before an overlay reaches her.
+            companion({ searchBounds }, { (1f - 4f * maxOf(overlay.value, backgroundBlur())).coerceIn(0f, 1f) })
         }
         FolderOverlay(
             openFolder,
