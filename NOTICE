@@ -1,0 +1,30 @@
+Saber-Theme
+Copyright 2026 Platinum-Saber
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+Copies and derivative works must keep this NOTICE and credit Platinum-Saber
+as the original author.
+
+Authorship
+----------
+The code was written by Claude (Anthropic's AI model, via Claude Code).
+Platinum-Saber provided the design decisions and architecture rules, and
+reviewed and approved every plan.
+
+Inspiration and credits
+-----------------------
+Fate series: Saber (Artoria Pendragon) and the Fate series belong to
+TYPE-MOON. They inspired the launcher's theme and its mascot. This is an
+unofficial fan project, not affiliated with or endorsed by TYPE-MOON or its
+licensees. The mascot is an original vector drawing made in code; no
+official artwork is included.
+
+Pinterest artwork: Saber fan art and chibi illustrations found on Pinterest
+were the style references for the mascot and the look of the theme, and were
+used as personal wallpapers while developing it. All rights stay with their
+artists. Those images are not part of this repository or of any release.
+Download them from their creators.
+
+The Apache License covers only the code and original assets in this
+repository. It grants no rights to Fate characters, TYPE-MOON trademarks or
+any third-party artwork.
