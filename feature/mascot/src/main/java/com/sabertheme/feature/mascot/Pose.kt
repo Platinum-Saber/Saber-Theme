@@ -71,6 +71,17 @@ data class Pose(
         )
     }
 
+    /**
+     * Per-frame easing toward [to]: numbers move [t] of the way, while the
+     * expression and effects switch at once (a small per-frame [t] would
+     * never cross [lerp]'s halfway point).
+     */
+    fun approach(to: Pose, t: Float): Pose = lerp(to, t).copy(
+        facing = to.facing, eyes = to.eyes, brows = to.brows, mouth = to.mouth, prop = to.prop, sitting = to.sitting,
+        tears = to.tears, zzz = to.zzz, dizzy = to.dizzy, notes = to.notes, hearts = to.hearts,
+        sparkles = to.sparkles, sweat = to.sweat, sigh = to.sigh, fidget = to.fidget,
+    )
+
     companion object {
         const val REST_ARM = 18f
 
