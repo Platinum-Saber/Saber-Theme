@@ -21,9 +21,9 @@ paths:
 - **Draw-phase only:** tilt, parallax, press and intensity are snapshot
   state in `GlassEnvironment` / `GlassPressState`; read them only in draw,
   `graphicsLayer` or `Modifier.Node` draw code, never in composition.
-- Tilt runs at `SENSOR_DELAY_GAME` while `EffectsPolicy` is Active (touched
-  within 3 s) and `SENSOR_DELAY_UI` while Idle; off when paused, Power
-  Saving, thermal throttling or animations off. A still phone must render
+- Tilt runs at `SENSOR_DELAY_GAME` whenever Home is visible (Active and
+  Idle; no slower idle rate, switching rates on a touch made Home stutter);
+  off when paused, Power Saving, thermal throttling or animations off. A still phone must render
   0 frames (deadband in `TiltFilter`; check `dumpsys gfxinfo` over 10 s).
   Registrations: `adb shell dumpsys sensorservice` (Previous Registrations).
 - Exception: the mascot animates continuously, but only on her own

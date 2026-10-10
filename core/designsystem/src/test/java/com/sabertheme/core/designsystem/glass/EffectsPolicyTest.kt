@@ -16,8 +16,8 @@ class EffectsPolicyTest {
         assertThat(policy.evaluate(3_999).mode).isEqualTo(Mode.Active)
         val idle = policy.evaluate(4_000)
         assertThat(idle.mode).isEqualTo(Mode.Idle)
-        // Tilt keeps following while home is visible, just slower.
-        assertThat(idle.sensor).isEqualTo(SensorRate.Slow)
+        // Tilt keeps following at full rate while home is visible: no rate switch on the next touch.
+        assertThat(idle.sensor).isEqualTo(SensorRate.Fast)
         assertThat(policy.idleAtMs()).isEqualTo(4_000)
     }
 

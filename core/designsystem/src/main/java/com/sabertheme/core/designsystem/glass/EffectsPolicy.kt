@@ -5,8 +5,9 @@ package com.sabertheme.core.designsystem.glass
  * ([EffectsController]) feeds it events and timestamps.
  *
  * - Active: full effects, tilt sensor at full rate.
- * - Idle: no touch for [idleTimeoutMs]; tilt keeps following at a slow rate
- *   while home is visible (off when paused), glass keeps its look.
+ * - Idle: no touch for [idleTimeoutMs]; glass keeps its look and tilt stays
+ *   at full rate while home is visible (off when paused). A slower idle rate
+ *   saved little, and switching rates on the next touch made Home stutter.
  * - Saver / Throttled: Power Saving or thermal pressure; sensor off, effects halved.
  * - Reduced: "Remove animations"; sensor off, springs snap.
  */
@@ -14,7 +15,7 @@ class EffectsPolicy(private val idleTimeoutMs: Long = IDLE_TIMEOUT_MS) {
 
     enum class Mode { Active, Idle, Saver, Throttled, Reduced }
 
-    enum class SensorRate { Off, Slow, Fast }
+    enum class SensorRate { Off, Fast }
 
     data class State(val mode: Mode, val intensity: Float, val sensor: SensorRate) {
         val sensorsOn: Boolean get() = sensor != SensorRate.Off
@@ -49,8 +50,7 @@ class EffectsPolicy(private val idleTimeoutMs: Long = IDLE_TIMEOUT_MS) {
         }
         val sensor = when {
             userIntensity <= 0f -> SensorRate.Off
-            mode == Mode.Active -> SensorRate.Fast
-            mode == Mode.Idle && resumed -> SensorRate.Slow
+            mode == Mode.Active || (mode == Mode.Idle && resumed) -> SensorRate.Fast
             else -> SensorRate.Off
         }
         return State(mode, intensity, sensor)

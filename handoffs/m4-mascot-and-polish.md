@@ -5,7 +5,7 @@
 ## Decisions
 - Mascot: an original vector rig drawn in code (`:feature:mascot`). It always animates on Home (user choice). It draws on a fixed full-window, z-on-top `SurfaceView` behind the Compose view, never in Compose: a Compose redraw re-runs every glass shader (8 ms GPU), and a moving SurfaceView flickers. 101 dp tall. Outfits: Armour / Winter / Casual.
 - Media widget: Spotify / VLC switcher. Resume order: MediaBrowser → MEDIA_BUTTON → open app. Starting one app pauses the others explicitly, because AudioHardening ignores focus requests from background-started apps. VLC artwork comes from the MediaStore thumbnail by title (its ArtworkProvider only serves system callers); this needs READ_MEDIA_VIDEO "Allow all".
-- Tilt keeps running at SENSOR_DELAY_UI when idle, with a deadband, so a still phone renders 0 frames.
+- Tilt runs at SENSOR_DELAY_GAME whenever Home is visible (no slow idle rate: the rate switch on touch caused lag), with a deadband, so a still phone renders 0 frames.
 - Photo wallpapers: framing sidecar (`PhotoFraming`, zoom relative to fill; below fill = blurred copy behind). No sidecar = centred fill.
 - Double-tap lock: accessibility service with only GLOBAL_ACTION_LOCK_SCREEN (keeps biometrics), not device admin.
 - Process: commit + push per step (`Co-Authored-By: Claude Opus 5.5`); test on the S23; back up `settings.preferences_pb` before on-device setting/layout tests (memory `device-layout-backup`); plan mode for >3 files.

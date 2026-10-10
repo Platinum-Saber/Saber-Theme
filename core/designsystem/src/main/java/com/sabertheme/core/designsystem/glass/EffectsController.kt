@@ -113,7 +113,7 @@ fun GlassEffectsController(env: GlassEnvironment, userIntensity: Float) {
     }
 
     if (sensorRate != EffectsPolicy.SensorRate.Off && env.effects.tilt) {
-        TiltSensor(env, fast = sensorRate == EffectsPolicy.SensorRate.Fast)
+        TiltSensor(env)
     }
 }
 
@@ -139,15 +139,14 @@ fun Modifier.glassInteractionTracker(env: GlassEnvironment): Modifier = this
 /**
  * Game rotation vector -> virtual light direction and wallpaper parallax.
  * Tilt is measured against a slowly drifting rest pose, so any natural
- * holding angle reads as "level". Registered only while composed; [fast]
- * picks the sampling rate (Active vs Idle). The filter outlives rate
- * switches so the light never jumps when a touch speeds it up.
+ * holding angle reads as "level". Registered only while composed, always at
+ * the game rate: re-registering at another rate on a touch stalled Home.
  */
 @Composable
-private fun TiltSensor(env: GlassEnvironment, fast: Boolean) {
+private fun TiltSensor(env: GlassEnvironment) {
     val context = LocalContext.current
     val filter = remember(env) { TiltFilter(env) }
-    DisposableEffect(env, fast) {
+    DisposableEffect(env) {
         val manager = context.getSystemService(SensorManager::class.java)
         val sensor = manager.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR)
         filter.resume()
@@ -155,8 +154,7 @@ private fun TiltSensor(env: GlassEnvironment, fast: Boolean) {
             override fun onSensorChanged(event: SensorEvent) = filter.onSample(event.values, event.timestamp)
             override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
         }
-        val rate = if (fast) SensorManager.SENSOR_DELAY_GAME else SensorManager.SENSOR_DELAY_UI
-        if (sensor != null) manager.registerListener(listener, sensor, rate)
+        if (sensor != null) manager.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_GAME)
         onDispose { manager.unregisterListener(listener) }
     }
 }
