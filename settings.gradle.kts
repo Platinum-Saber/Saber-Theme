@@ -28,6 +28,7 @@ include(
     ":core:widgetdata",
     ":feature:drawer",
     ":feature:home",
+    ":feature:mascot",
     ":feature:settings",
     ":feature:widgets",
     ":widgets-glance",

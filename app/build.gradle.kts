@@ -37,6 +37,7 @@ dependencies {
     implementation(projects.core.widgetdata)
     implementation(projects.feature.drawer)
     implementation(projects.feature.home)
+    implementation(projects.feature.mascot)
     implementation(projects.feature.settings)
     implementation(projects.feature.widgets)
     implementation(projects.widgetsGlance)

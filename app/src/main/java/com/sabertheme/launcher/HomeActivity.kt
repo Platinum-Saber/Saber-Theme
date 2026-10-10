@@ -1,5 +1,6 @@
 package com.sabertheme.launcher
 
+import com.sabertheme.feature.mascot.MascotLayer
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -103,6 +104,7 @@ class HomeActivity : ComponentActivity() {
                                 backgroundBlur = { maxOf(drawer.fraction, settingsPage.fraction) },
                                 resetSignal = homePressCount,
                                 widgetContent = { widget, size, modifier -> WidgetHost(widgets, widget, size, modifier) },
+                                companion = { anchor -> MascotLayer(anchor) },
                             )
                         } else {
                             WallpaperLayer()

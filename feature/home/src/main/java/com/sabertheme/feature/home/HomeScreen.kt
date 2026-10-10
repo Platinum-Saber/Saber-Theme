@@ -1,5 +1,6 @@
 package com.sabertheme.feature.home
 
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Canvas
@@ -115,6 +116,8 @@ fun HomeScreen(
     /** Bumped by the Home button: leaves edit mode and closes overlays. */
     resetSignal: Int = 0,
     widgetContent: @Composable (HomeItem.Widget, WidgetSize, Modifier) -> Unit = { widget, _, modifier -> WidgetPlaceholder(widget, modifier) },
+    /** Drawn above pages and dock (the mascot); gets the search pill's window bounds. */
+    companion: @Composable (anchor: () -> Rect) -> Unit = {},
 ) {
     val env = LocalGlassEnvironment.current
     val view = LocalView.current
@@ -125,6 +128,7 @@ fun HomeScreen(
     var openFolder by remember { mutableStateOf<OpenFolder?>(null) }
     var menu by remember { mutableStateOf<MenuRequest?>(null) }
     var editing by rememberSaveable { mutableStateOf(false) }
+    var searchBounds by remember { mutableStateOf(Rect.Zero) }
     val edit = remember { Animatable(0f) }
     val pageVelocity = rememberPageVelocity(pager)
 
@@ -328,7 +332,7 @@ fun HomeScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         PageIndicator(pager)
                         Spacer(Modifier.height(14.dp))
-                        SearchPill { openDrawer(true) }
+                        SearchPill(Modifier.onGloballyPositioned { searchBounds = it.boundsInWindow() }) { openDrawer(true) }
                     }
                 }
             }
@@ -345,6 +349,11 @@ fun HomeScreen(
                 },
             )
             Spacer(Modifier.height(Space.s3))
+        }
+        if (!editing && openFolder == null) {
+            Box(Modifier.fillMaxSize().graphicsLayer { alpha = 1f - maxOf(overlay.value, backgroundBlur()).coerceIn(0f, 1f) }) {
+                companion { searchBounds }
+            }
         }
         FolderOverlay(
             openFolder,
