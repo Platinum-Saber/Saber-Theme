@@ -8,6 +8,9 @@ import android.os.SystemClock
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
@@ -74,6 +77,8 @@ fun MascotLayer(
     charging: () -> Boolean = { false },
     /** 0..1 fade, e.g. while the drawer opens over Home. */
     alpha: () -> Float = { 1f },
+    /** Unread chats for her message cloud; empty hides it. */
+    messages: () -> List<CloudMessage> = { emptyList() },
 ) {
     val density = LocalDensity.current
     val view = LocalView.current
@@ -82,6 +87,9 @@ fun MascotLayer(
     // The frame loop outlives recompositions: read the latest values through these.
     val music by rememberUpdatedState(musicPlaying)
     val currentCharging by rememberUpdatedState(charging)
+    val currentMessages by rememberUpdatedState(messages)
+    val cloud = remember { MessageCloud(density) }
+    var cloudBox by remember { mutableStateOf(Rect.Zero) }
     val currentAnchor by rememberUpdatedState(anchor)
     val currentAlpha by rememberUpdatedState(alpha)
     val currentOutfit by rememberUpdatedState(outfit)
@@ -170,12 +178,15 @@ fun MascotLayer(
             brain.tick(ms, quietMs, music())
 
             val u = h / 140f // px per rig unit
+            val herBox = Rect(physics.x - w / 2f, physics.y - h, physics.x + w / 2f, physics.y)
             // A quick tap can go down and up between two frames: a new touch counts for at least one.
             val newTouch = env.touchDownNanos != fingerDownNanos
             if (newTouch) {
                 fingerDownNanos = env.touchDownNanos
                 val p = env.touchPosition - origin
-                fingerOnHer = p.x in (physics.x - w / 2f)..(physics.x + w / 2f) && p.y in (physics.y - h)..physics.y
+                val onCloud = cloud.bounds.contains(p)
+                fingerOnHer = herBox.contains(p) || onCloud
+                if (!onCloud) cloud.collapse() // a tap elsewhere closes the preview
             }
             if ((env.touchDown || newTouch) && !fingerOnHer && env.touchPosition.isSpecified && currentAlpha() > 0.5f) {
                 val p = env.touchPosition - origin
@@ -189,6 +200,14 @@ fun MascotLayer(
             }
             if (brain.mood == Mood.Duel && lastMood != Mood.Duel) haptic(HapticFeedbackConstants.CLOCK_TICK)
             lastMood = brain.mood
+
+            val newMessage = cloud.update(currentMessages(), time)
+            cloud.layout(herBox, layer.width.toFloat(), brain.mood != Mood.Held && brain.mood != Mood.Falling && currentAlpha() > 0.5f, time)
+            if (cloud.bounds != cloudBox) cloudBox = cloud.bounds
+            if (newMessage && cloud.bounds != Rect.Zero) {
+                brain.message(ms)
+                if (brain.mood == Mood.Moment) motion.facing = sign(cloud.bounds.center.x - physics.x).takeIf { it != 0f } ?: motion.facing
+            }
 
             motion.facing = when {
                 brain.mood == Mood.Duel || brain.mood == Mood.Point -> motion.aimFacing
@@ -205,7 +224,10 @@ fun MascotLayer(
             val tilt = if (env.effects.tilt) (env.light.x - GlassEnvironment.DEFAULT_LIGHT.x).coerceIn(-1f, 1f) else 0f
             pose[0] = if (env.reducedMotion) motion.blended else motion.animate(brain, time, tilt)
             val topLeft = Offset(physics.x - w / 2f, physics.y - h) + origin
-            surface.draw(density, topLeft, w, h, currentAlpha()) { drawSaber(pose[0], time, currentOutfit) }
+            surface.draw(density, topLeft, w, h, currentAlpha()) {
+                drawSaber(pose[0], time, currentOutfit)
+                with(cloud) { draw(topLeft - origin, time) }
+            }
             }
         }
     }
@@ -219,6 +241,28 @@ fun MascotLayer(
             },
     ) {
         if (feet == Offset.Unspecified) return@Box
+        // Her message cloud's tap target: tap to preview, tap a chat to open it.
+        Box(
+            Modifier
+                .offset { IntOffset(cloudBox.left.roundToInt(), cloudBox.top.roundToInt()) }
+                .layout { measurable, _ ->
+                    val box = cloudBox
+                    val placeable = measurable.measure(Constraints.fixed(box.width.roundToInt(), box.height.roundToInt()))
+                    layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+                }
+                .pointerInput(cloud) {
+                    detectTapGestures { at ->
+                        haptic(HapticFeedbackConstants.CLOCK_TICK)
+                        if (!cloud.expanded) {
+                            cloud.toggle(clock[0])
+                        } else {
+                            val chat = cloud.rowAt(at.y)
+                            cloud.collapse()
+                            chat?.open?.invoke()
+                        }
+                    }
+                },
+        )
         Box(
             Modifier
                 .offset { IntOffset((feet.x - w / 2f).roundToInt(), (feet.y - h).roundToInt()) }

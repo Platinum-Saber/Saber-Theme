@@ -33,6 +33,8 @@ data class GlassSettings(
     /** The Saber mascot on the search bar. */
     val mascotEnabled: Boolean = true,
     val mascotOutfit: MascotOutfit = MascotOutfit.Armor,
+    /** Her thought cloud with unread WhatsApp chats (needs notification listener access). */
+    val mascotMessageCloud: Boolean = true,
     /** Double-tap empty Home space locks the phone (needs the accessibility service). */
     val doubleTapLock: Boolean = true,
 )

@@ -3,6 +3,8 @@ package com.sabertheme.launcher
 import com.sabertheme.core.data.ScreenLock
 import com.sabertheme.core.widgetdata.WidgetState
 import com.sabertheme.feature.mascot.Outfit
+import com.sabertheme.core.widgetdata.ChatNotifications
+import com.sabertheme.feature.mascot.CloudMessage
 import com.sabertheme.feature.mascot.MascotLayer
 import android.content.Intent
 import android.os.Bundle
@@ -83,6 +85,15 @@ class HomeActivity : ComponentActivity() {
             // ...and stands guard with a glowing sword while charging.
             val battery by widgets.battery.state.collectAsStateWithLifecycle(WidgetState.Loading)
             val charging = (battery as? WidgetState.Ready)?.data?.charging == true
+            // ...and keeps unread WhatsApp chats in a cloud beside her.
+            val chats by ChatNotifications.messages.collectAsStateWithLifecycle()
+            val cloudMessages = remember(chats, settings.mascotMessageCloud) {
+                if (!settings.mascotMessageCloud) {
+                    emptyList()
+                } else {
+                    chats.map { m -> CloudMessage(m.chat, m.sender, m.text, m.count) { m.openChat(this@HomeActivity) } }
+                }
+            }
 
             LaunchedEffect(Unit) {
                 homePresses.drop(1).collect {
@@ -121,7 +132,7 @@ class HomeActivity : ComponentActivity() {
                                 companion = { anchor, alpha ->
                                     // Her surface draws above every view: hide her under app-level sheets.
                                     if (settings.mascotEnabled && !lockPrompt && !widgetPickerOpen) {
-                                        MascotLayer(anchor, outfit = Outfit.valueOf(settings.mascotOutfit.name), musicPlaying = { musicPlaying }, charging = { charging }, alpha = alpha)
+                                        MascotLayer(anchor, outfit = Outfit.valueOf(settings.mascotOutfit.name), musicPlaying = { musicPlaying }, charging = { charging }, alpha = alpha, messages = { cloudMessages })
                                     }
                                 },
                             )

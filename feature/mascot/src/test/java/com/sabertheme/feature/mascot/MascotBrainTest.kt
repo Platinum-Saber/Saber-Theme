@@ -160,4 +160,14 @@ class MascotBrainTest {
         brain.finger(near = false, now = 40)
         assertThat(brain.mood).isEqualTo(Mood.Crying)
     }
+
+    @Test
+    fun newMessageMakesHerGlanceUnlessBusy() {
+        brain.message(0)
+        assertThat(brain.mood).isEqualTo(Mood.Moment)
+        assertThat(brain.moment).isEqualTo(MascotBrain.Moment.Curious)
+        brain.finger(near = true, now = 100)
+        brain.message(200)
+        assertThat(brain.mood).isEqualTo(Mood.Duel)
+    }
 }

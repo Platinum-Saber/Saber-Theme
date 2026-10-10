@@ -30,6 +30,7 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
                 tiltEnabled = prefs[TILT] ?: true,
                 mascotEnabled = prefs[MASCOT] ?: true,
                 mascotOutfit = MascotOutfit.entries.firstOrNull { it.name == prefs[MASCOT_OUTFIT] } ?: MascotOutfit.Armor,
+                mascotMessageCloud = prefs[MASCOT_MESSAGES] ?: true,
                 doubleTapLock = prefs[DOUBLE_TAP_LOCK] ?: true,
             )
         }
@@ -63,6 +64,10 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
         store.edit { it[MASCOT_OUTFIT] = outfit.name }
     }
 
+    suspend fun setMascotMessageCloud(enabled: Boolean) {
+        store.edit { it[MASCOT_MESSAGES] = enabled }
+    }
+
     suspend fun setDoubleTapLock(enabled: Boolean) {
         store.edit { it[DOUBLE_TAP_LOCK] = enabled }
     }
@@ -75,6 +80,7 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
         val TILT = booleanPreferencesKey("tilt")
         val MASCOT = booleanPreferencesKey("mascot")
         val MASCOT_OUTFIT = stringPreferencesKey("mascot_outfit")
+        val MASCOT_MESSAGES = booleanPreferencesKey("mascot_messages")
         val DOUBLE_TAP_LOCK = booleanPreferencesKey("double_tap_lock")
 
         fun decodeIconStyle(value: String?): IconStyle = IconStyle.entries.firstOrNull { it.name == value } ?: IconStyle.Tile

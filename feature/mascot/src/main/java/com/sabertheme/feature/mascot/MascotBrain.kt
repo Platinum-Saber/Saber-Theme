@@ -76,6 +76,13 @@ class MascotBrain(private val random: Random = Random.Default) {
         }
     }
 
+    /** A new chat message: she glances at her cloud, unless busy with something livelier. */
+    fun message(now: Long) {
+        if (mood != Mood.Idle && mood != Mood.Moment && mood != Mood.Wander) return
+        moment = Moment.Curious
+        set(Mood.Moment, now, momentMs(Moment.Curious))
+    }
+
     fun longPress(now: Long) {
         if (busy) return
         pokes.clear()

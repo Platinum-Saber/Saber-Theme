@@ -212,6 +212,10 @@ fun SettingsScreen(
                                 onSelect = viewModel::setMascotOutfit,
                             )
                         }
+                        Divider()
+                        SettingRow("Message cloud") {
+                            GlassSwitch(settings.mascotMessageCloud, viewModel::setMascotMessageCloud)
+                        }
                     }
 
                     Group("Home screen") {

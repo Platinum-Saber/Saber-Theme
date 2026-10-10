@@ -117,6 +117,10 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setMascotOutfit(outfit) }
     }
 
+    fun setMascotMessageCloud(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setMascotMessageCloud(enabled) }
+    }
+
     fun setDoubleTapLock(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setDoubleTapLock(enabled) }
     }
