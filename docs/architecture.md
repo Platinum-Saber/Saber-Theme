@@ -397,12 +397,17 @@ Settings → Mascot: Show Saber, outfit (Armour / Winter / Casual).
   breathing, blinks, ahoge sway, walk cycle, dangling against the finger,
   landing squash, poke flinch, dance bob (~110 bpm), lean with phone tilt.
 - **Rendering cost:** she animates continuously (~30 fps, ~8 fps in Power
-  Saving, static under "Remove animations") on her own `SurfaceView`
-  (`MascotSurface`, z-on-top, hardware canvas). Drawing her inside Compose
+  Saving, static under "Remove animations") on her own full-window
+  `SurfaceView` (`MascotSurface`, z-on-top, hardware canvas, attached
+  behind the Compose view so it never takes touches). The surface never
+  moves; she is drawn at her position inside it (moving a small
+  SurfaceView flickered and doubled her while dragging: its position
+  updates on Home's frames, her pixels on the surface's). Drawing her inside Compose
   made Home redraw its full-screen glass every frame (8.3 ms GPU, 61% janky
   frames at 120 Hz); on the surface the Home window draws 0 frames while she
   idles (benchmark: her surface 5 ms/frame, 0% jank; 12 swipes 1.14% jank,
-  p90 6 ms, same as before the mascot). Home only redraws while she moves.
+  p90 6 ms, same as before the mascot). Home only relayouts her touch
+  target while she moves.
 - **Touch:** a transparent box over her takes tap / long-press / drag;
   everything else passes through to Home.
 

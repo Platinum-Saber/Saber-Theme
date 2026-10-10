@@ -27,7 +27,8 @@ paths:
   0 frames (deadband in `TiltFilter`; check `dumpsys gfxinfo` over 10 s).
   Registrations: `adb shell dumpsys sensorservice` (Previous Registrations).
 - Exception: the mascot animates continuously, but only on her own
-  `SurfaceView` (`MascotSurface`). Never draw continuous animation in the
+  full-window `SurfaceView` (`MascotSurface`), which never moves (moving a
+  SurfaceView desyncs position and content). Never draw continuous animation in the
   Compose tree on Home: any invalidation re-runs every glass shader (~8 ms
   GPU per frame). Check the Home window's own frames with
   `dumpsys gfxinfo <appId> framestats` (PROFILEDATA rows), not the total.

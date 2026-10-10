@@ -1,6 +1,5 @@
 package com.sabertheme.feature.mascot
 
-import androidx.compose.ui.viewinterop.AndroidView
 import kotlin.math.PI
 import com.sabertheme.core.designsystem.glass.GlassEnvironment
 import kotlinx.coroutines.delay
@@ -14,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -78,6 +78,10 @@ fun MascotLayer(
     val currentAlpha by rememberUpdatedState(alpha)
     val currentOutfit by rememberUpdatedState(outfit)
     val surface = remember { MascotSurface(view.context) }
+    DisposableEffect(surface) {
+        surface.attach(view)
+        onDispose { surface.detach() }
+    }
     val physics = remember { MascotPhysics(density.density) }
     val brain = remember { MascotBrain() }
     val motion = remember { Motion() }
@@ -162,7 +166,8 @@ fun MascotLayer(
             // Lean with the phone: the tilt light moves off its rest direction.
             val tilt = if (env.effects.tilt) (env.light.x - GlassEnvironment.DEFAULT_LIGHT.x).coerceIn(-1f, 1f) else 0f
             pose[0] = if (env.reducedMotion) motion.blended else motion.animate(brain, time, tilt)
-            surface.draw(density, w, h, currentAlpha()) { drawSaber(pose[0], time, currentOutfit) }
+            val topLeft = Offset(physics.x - w / 2f, physics.y - h) + origin
+            surface.draw(density, topLeft, w, h, currentAlpha()) { drawSaber(pose[0], time, currentOutfit) }
             }
         }
     }
@@ -176,15 +181,6 @@ fun MascotLayer(
             },
     ) {
         if (feet == Offset.Unspecified) return@Box
-        val pad = MASCOT_HEIGHT * MascotSurface.PAD
-        // Her own surface, composited by the system: animating her redraws only this
-        // small buffer, never Home's glass (which costs ~8 ms of GPU per frame).
-        AndroidView(
-            factory = { surface.view },
-            modifier = Modifier
-                .offset { IntOffset((feet.x - w / 2f - pad.toPx()).roundToInt(), (feet.y - h - pad.toPx()).roundToInt()) }
-                .size(MASCOT_WIDTH + pad * 2, MASCOT_HEIGHT + pad * 2),
-        )
         Box(
             Modifier
                 .offset { IntOffset((feet.x - w / 2f).roundToInt(), (feet.y - h).roundToInt()) }
