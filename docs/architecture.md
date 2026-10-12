@@ -410,7 +410,7 @@ An interactive chibi Saber (`:feature:mascot`) stands on the right end of the
 Home search bar. `HomeScreen(companion = …)` hosts her and passes the search
 pill's window bounds and a fade (gone within the first quarter of the drawer
 or settings sliding in; hidden in edit mode and under folders and menus).
-Settings → Mascot: Show Saber, outfit (Armour / Winter / Casual), message cloud.
+Settings → Mascot: Show Saber, outfit (Armour / Winter / Casual), message cloud, glass pill.
 - **Rig:** `drawSaber(pose, time, outfit)` draws her from vector parts in a
   100 x 140 box (101 dp tall on Home). `Pose` holds angles, squash, lift,
   eyes (white sclera + green iris), brows, mouth, prop (sword, gift, heart
@@ -466,6 +466,20 @@ Settings → Mascot: Show Saber, outfit (Armour / Winter / Casual), message clou
   notifications are cancelled; a short drag springs back. The glass is
   `GlassBlobPainter` (`:core:designsystem`): the same shader look on a
   smooth union of circles and a rounded box, drawn on her surface.
+
+- **Glass pill** (`GlassPill`): a 100 x 32 dp glass pill around the camera
+  cutout (`rootWindowInsets.displayCutout`), drawn on her surface with
+  `GlassBlobPainter`. One UI hands a touch that starts just under the status
+  bar to its own pull-down gesture (`transferTouchGesture`, measured on the
+  S23), so the docked pill is pulled from a strip 16-56 dp below it, marked
+  by a small handle. Dropped near the camera it snaps back; dropped elsewhere
+  it hovers and she runs under it (`Chase`), leaps so her head peaks at it
+  (`MascotPhysics.leapTo`) or swings from the bar when it is within reach
+  (`Leap`), and slashes it at the top of the jump: a white streak, then two
+  halves (the pill clipped either side of the cut) spin apart, fall and fade,
+  and a new pill swells back around the camera after 3 s. Grabbing it again
+  calls her off; her own landing is always happy. Settings -> Mascot ->
+  Glass pill.
 
 ## Security
 See `docs/security.md`: backup rules (layout + settings only), message

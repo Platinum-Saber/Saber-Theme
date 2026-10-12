@@ -222,6 +222,10 @@ fun SettingsScreen(
                         SettingRow("Message cloud") {
                             GlassSwitch(settings.mascotMessageCloud, viewModel::setMascotMessageCloud)
                         }
+                        Divider()
+                        SettingRow("Glass pill", "Drag it down from the camera; she slashes it") {
+                            GlassSwitch(settings.mascotPill, viewModel::setMascotPill)
+                        }
                     }
 
                     Group("Home screen") {

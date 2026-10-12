@@ -170,4 +170,42 @@ class MascotBrainTest {
         brain.message(200)
         assertThat(brain.mood).isEqualTo(Mood.Duel)
     }
+
+    @Test
+    fun droppedPillMakesHerChaseLeapAndLandHappy() {
+        brain.pillDropped(0)
+        assertThat(brain.mood).isEqualTo(Mood.Chase)
+        brain.finger(near = true, now = 100) // a finger doesn't distract her
+        assertThat(brain.mood).isEqualTo(Mood.Chase)
+        brain.reachedPill(500)
+        assertThat(brain.mood).isEqualTo(Mood.Leap)
+        brain.slashed(800, airborne = true)
+        assertThat(brain.slashAt).isEqualTo(800)
+        brain.land(MascotBrain.CRY_IMPACT + 100f, 1_200) // even a hard landing
+        assertThat(brain.mood).isEqualTo(Mood.Happy)
+    }
+
+    @Test
+    fun groundSlashEndsInAVictory() {
+        brain.pillDropped(0)
+        brain.reachedPill(300)
+        brain.slashed(400, airborne = false)
+        brain.tick(400 + MascotBrain.GROUND_SLASH_MS)
+        assertThat(brain.mood).isEqualTo(Mood.Happy)
+    }
+
+    @Test
+    fun takingThePillBackCancelsTheChase() {
+        brain.pillDropped(0)
+        brain.awayFromHome = true
+        brain.pillTaken(200)
+        assertThat(brain.mood).isEqualTo(Mood.Walking)
+    }
+
+    @Test
+    fun heldOrSulkingSheIgnoresThePill() {
+        brain.grab(0)
+        brain.pillDropped(10)
+        assertThat(brain.mood).isEqualTo(Mood.Held)
+    }
 }

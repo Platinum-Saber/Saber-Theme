@@ -148,7 +148,7 @@ class HomeActivity : ComponentActivity() {
                                 companion = { anchor, alpha ->
                                     // Her surface draws above every view: hide her under app-level sheets.
                                     if (settings.mascotEnabled && !lockPrompt && !widgetPickerOpen) {
-                                        MascotLayer(anchor, outfit = Outfit.valueOf(settings.mascotOutfit.name), musicPlaying = { musicPlaying }, charging = { charging }, alpha = alpha, messages = { cloudMessages })
+                                        MascotLayer(anchor, outfit = Outfit.valueOf(settings.mascotOutfit.name), musicPlaying = { musicPlaying }, charging = { charging }, alpha = alpha, messages = { cloudMessages }, pillEnabled = { settings.mascotPill })
                                     }
                                 },
                             )

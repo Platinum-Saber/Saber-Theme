@@ -37,6 +37,8 @@ data class GlassSettings(
     val mascotOutfit: MascotOutfit = MascotOutfit.Armor,
     /** Her thought cloud with unread WhatsApp chats (needs notification listener access). */
     val mascotMessageCloud: Boolean = true,
+    /** The glass pill around the camera that she slashes when it is dropped on Home. */
+    val mascotPill: Boolean = true,
     /** Double-tap empty Home space locks the phone (needs the accessibility service). */
     val doubleTapLock: Boolean = true,
 ) {

@@ -4,6 +4,7 @@ import kotlin.math.PI
 import com.sabertheme.core.designsystem.glass.GlassEnvironment
 import kotlinx.coroutines.delay
 import android.os.PowerManager
+import android.view.WindowInsets
 import android.os.SystemClock
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -53,6 +54,13 @@ internal val MASCOT_HEIGHT = 101.dp // 72 dp + 40%: readable on Home
 internal val MASCOT_WIDTH = MASCOT_HEIGHT * (100f / 140f)
 
 private const val WALK_DP_PER_S = 48f
+private const val RUN_DP_PER_S = 170f
+/** A pill within this many of her heights above her feet gets a swing from the bar, no jump. */
+private const val REACH_HEIGHTS = 1.1f
+/** Her feet at the top of the jump, below the pill's centre (in her heights): the pill is at her head. */
+private const val APEX_BELOW_HEIGHTS = 0.85f
+private const val GROUND_SWING_S = 0.25f
+private const val SWING_MS = 350L
 private const val POSE_RATE = 14f
 private const val FRAME_MS = 22L
 private const val SAVER_FRAME_MS = 110L
@@ -79,6 +87,8 @@ fun MascotLayer(
     alpha: () -> Float = { 1f },
     /** Unread chats for her message cloud; empty hides it. */
     messages: () -> List<CloudMessage> = { emptyList() },
+    /** The glass pill around the camera that she slashes when it is dropped on Home. */
+    pillEnabled: () -> Boolean = { true },
 ) {
     val density = LocalDensity.current
     val view = LocalView.current
@@ -91,6 +101,13 @@ fun MascotLayer(
     val currentColors by rememberUpdatedState(LocalSaberColors.current)
     val cloud = remember { MessageCloud(density) }
     var cloudBox by remember { mutableStateOf(Rect.Zero) }
+    val pill = remember { GlassPill(density) }
+    var pillZone by remember { mutableStateOf(Rect.Zero) }
+    val currentPillEnabled by rememberUpdatedState(pillEnabled)
+    // Camera cutout (layer px) and status bar bottom (window px), read from the insets on layout.
+    val cutout = remember { arrayOfNulls<Rect>(1) }
+    val statusBar = remember { floatArrayOf(0f) }
+    val pillBox = remember { arrayOf(Offset.Zero) }
     val currentAnchor by rememberUpdatedState(anchor)
     val currentAlpha by rememberUpdatedState(alpha)
     val currentOutfit by rememberUpdatedState(outfit)
@@ -134,6 +151,7 @@ fun MascotLayer(
         var fingerOnHer = false
         var fingerHeld = false
         var lastMood = brain.mood
+        var groundSwingAt = -1f
         // Always animating while Home shows her, capped near 30 fps (~8 fps in Power Saving).
         while (true) {
             delay(if (saver) SAVER_FRAME_MS else FRAME_MS)
@@ -165,6 +183,24 @@ fun MascotLayer(
                     physics.y = spot.y
                     when (brain.mood) {
                         Mood.Walking -> if (physics.walkToward(spot.x, WALK_DP_PER_S, dt)) brain.arrived(ms)
+                        Mood.Chase -> {
+                            val target = pill.bounds.center.x.coerceIn(physics.minX, physics.maxX)
+                            motion.facing = sign(target - physics.x).takeIf { it != 0f } ?: motion.facing
+                            if (physics.walkToward(target, RUN_DP_PER_S, dt)) {
+                                brain.reachedPill(ms)
+                                val apex = pill.bounds.center.y + APEX_BELOW_HEIGHTS * h
+                                groundSwingAt = -1f
+                                if (physics.y - pill.bounds.center.y <= REACH_HEIGHTS * h || !physics.leapTo(target, apex.coerceAtLeast(physics.ceiling))) {
+                                    groundSwingAt = time + GROUND_SWING_S
+                                }
+                            }
+                        }
+                        Mood.Leap -> if (groundSwingAt in 0f..time && pill.state == GlassPill.State.Resting) {
+                            pill.breakAt(motion.facing * 18f, time)
+                            brain.slashed(ms, airborne = false)
+                            groundSwingAt = -1f
+                            haptic(HapticFeedbackConstants.CONFIRM)
+                        }
                         Mood.Wander -> {
                             val target = (spot.x + brain.wanderDp * density.density).coerceIn(physics.minX, physics.maxX)
                             motion.facing = sign(target - physics.x).takeIf { it != 0f } ?: motion.facing
@@ -174,6 +210,22 @@ fun MascotLayer(
                     }
                 }
             }
+            // In the air, the slash lands at the top of the jump.
+            if (brain.mood == Mood.Leap && physics.airborne && physics.vy >= 0f && pill.state == GlassPill.State.Resting) {
+                pill.breakAt(-motion.facing * 22f, time)
+                brain.slashed(ms, airborne = true)
+                haptic(HapticFeedbackConstants.CONFIRM)
+            }
+            val pillOn = currentPillEnabled() && currentAlpha() > 0.5f
+            if (!pillOn) pill.reset()
+            // The pill went back (grabbed again, or Home hid) before she got to it.
+            if ((brain.mood == Mood.Chase || (brain.mood == Mood.Leap && brain.slashAt < brain.since)) && pill.state != GlassPill.State.Resting) {
+                brain.pillTaken(ms)
+                groundSwingAt = -1f
+            }
+            pill.layout(cutout[0], statusBar[0] - origin.y, layer.width.toFloat(), spot.y, time)
+            val zone = if (pillOn) pill.grabZone else Rect.Zero
+            if (zone != pillZone) pillZone = zone
             brain.awayFromHome = !physics.airborne && abs(physics.x - spot.x) > 2f * density.density
             val quietMs = (System.nanoTime() - env.lastInteractionNanos) / 1_000_000
             brain.tick(ms, quietMs, music())
@@ -219,13 +271,14 @@ fun MascotLayer(
             feet = Offset(physics.x, physics.y)
 
             val powered = currentCharging()
-            val target = basePose(brain, time, motion, powered).let { if (powered) it.copy(glow = 1f) else it }
+            val target = basePose(brain, time, ms, motion, powered).let { if (powered) it.copy(glow = 1f) else it }
             motion.blended = if (env.reducedMotion) target else motion.blended.approach(target, 1f - exp(-dt * POSE_RATE))
             // Lean with the phone: the tilt light moves off its rest direction.
             val tilt = if (env.effects.tilt) (env.light.x - GlassEnvironment.DEFAULT_LIGHT.x).coerceIn(-1f, 1f) else 0f
             pose[0] = if (env.reducedMotion) motion.blended else motion.animate(brain, time, tilt)
             val topLeft = Offset(physics.x - w / 2f, physics.y - h) + origin
             surface.draw(density, topLeft, w, h, currentAlpha()) {
+                if (currentPillEnabled()) with(pill) { draw(topLeft - origin, origin, time, env, currentColors) }
                 drawSaber(pose[0], time, currentOutfit)
                 with(cloud) { draw(topLeft - origin, origin, time, env, currentColors) }
             }
@@ -239,9 +292,53 @@ fun MascotLayer(
             .onGloballyPositioned {
                 origin = it.positionInWindow()
                 layer = it.size
+                val insets = view.rootWindowInsets
+                statusBar[0] = insets?.getInsets(WindowInsets.Type.statusBars())?.top?.toFloat() ?: 0f
+                cutout[0] = insets?.displayCutout?.boundingRectTop?.takeUnless { r -> r.isEmpty }?.let { r ->
+                    Rect(r.left - origin.x, r.top - origin.y, r.right - origin.x, r.bottom - origin.y)
+                }
             },
     ) {
         if (feet == Offset.Unspecified) return@Box
+        // The glass pill's touch target: pull it down from under the status bar, drop it for her.
+        if (pillZone != Rect.Zero) {
+            Box(
+                Modifier
+                    .offset { IntOffset(pillZone.left.roundToInt(), pillZone.top.roundToInt()) }
+                    .layout { measurable, _ ->
+                        val box = pillZone
+                        val placeable = measurable.measure(Constraints.fixed(box.width.roundToInt(), box.height.roundToInt()))
+                        layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+                    }
+                    // The box moves with the pill: pointer positions are local to where it is laid out.
+                    .onGloballyPositioned { pillBox[0] = it.positionInParent() }
+                    .pointerInput(pill) {
+                        awaitEachGesture {
+                            val down = awaitFirstDown()
+                            down.consume()
+                            pill.grab()
+                            brain.pillTaken(System.nanoTime() / 1_000_000)
+                            haptic(HapticFeedbackConstants.LONG_PRESS)
+                            var last = down.position + pillBox[0]
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                                change.consume()
+                                if (!change.pressed) break
+                                val now = change.position + pillBox[0]
+                                pill.dragBy(now - last)
+                                last = now
+                            }
+                            if (pill.drop()) {
+                                brain.pillDropped(System.nanoTime() / 1_000_000)
+                                haptic(HapticFeedbackConstants.CONFIRM)
+                            } else {
+                                haptic(HapticFeedbackConstants.CLOCK_TICK)
+                            }
+                        }
+                    },
+            )
+        }
         // Her message cloud's touch target: tap to preview, tap a chat to open it, flick it away to dismiss.
         Box(
             Modifier
@@ -358,7 +455,9 @@ fun MascotLayer(
 }
 
 /** The pose each mood (and idle moment) blends toward; [Motion.animate] adds the moving parts. */
-private fun basePose(brain: MascotBrain, t: Float, motion: Motion, charging: Boolean): Pose = when (brain.mood) {
+private fun basePose(brain: MascotBrain, t: Float, nowMs: Long, motion: Motion, charging: Boolean): Pose = when (brain.mood) {
+    Mood.Chase -> Pose.SwordReady.copy(mouth = Mouth.Open, brows = Brows.Angry)
+    Mood.Leap -> if (nowMs - brain.slashAt < SWING_MS) Pose.SwordSwing else Pose.SwordReady.copy(brows = Brows.Angry, mouth = Mouth.Open)
     Mood.Idle -> if (charging) Pose.Guard else Pose.Neutral
     Mood.Walking, Mood.Wander, Mood.SoftLanding -> Pose.Neutral
     Mood.Surprised -> Pose.Surprised
@@ -432,6 +531,11 @@ private class Motion {
         // Blink for 130 ms every ~4 s (open eyes only).
         if (p.eyes == Eyes.Open && (t % 4.1f) < 0.13f) p = p.copy(eyes = Eyes.Closed)
         when (brain.mood) {
+            Mood.Chase -> {
+                val s = sin(t * 16f)
+                p = p.copy(legLeft = 30f * s, legRight = -30f * s, armLeft = Pose.REST_ARM - 20f * s, lift = abs(s) * 2.4f, bodyTilt = 8f * facing)
+            }
+            Mood.Leap -> p = p.copy(legLeft = 35f, legRight = 15f, bodyTilt = 6f * facing)
             Mood.Walking -> {
                 val s = sin(t * 11f)
                 p = p.copy(

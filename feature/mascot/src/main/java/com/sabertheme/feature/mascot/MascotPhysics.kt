@@ -2,6 +2,7 @@ package com.sabertheme.feature.mascot
 
 import kotlin.math.abs
 import kotlin.math.sign
+import kotlin.math.sqrt
 
 /**
  * Where her feet are and how she moves, in px. Pure Kotlin; see
@@ -42,6 +43,20 @@ class MascotPhysics(private val dp: Float) {
         airborne = true
         peakFall = 0f
         hitFloor = false
+    }
+
+    /**
+     * Jumps so that her feet peak at [apexY] right under [targetX] (px).
+     * Returns false (no jump) when the apex isn't above her.
+     */
+    fun leapTo(targetX: Float, apexY: Float): Boolean {
+        val rise = y - apexY
+        if (rise <= 0f) return false
+        val g = GRAVITY * dp
+        val up = sqrt(2f * g * rise)
+        val tApex = up / g
+        throwAt((targetX - x) / tApex, -up)
+        return true
     }
 
     /**

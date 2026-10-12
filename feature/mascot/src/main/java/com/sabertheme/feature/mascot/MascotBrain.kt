@@ -20,6 +20,10 @@ class MascotBrain(private val random: Random = Random.Default) {
         Duel,
         /** A finger far away: she points at it. */
         Point,
+        /** Running along the bar to get under the dropped glass pill. */
+        Chase,
+        /** Jumping at the pill (or swinging at it from the bar) to slash it. */
+        Leap,
     }
 
     enum class Moment { LookAround, Stretch, SwordPractice, Sit, HeartHands, Curious, Thinking }
@@ -31,6 +35,10 @@ class MascotBrain(private val random: Random = Random.Default) {
 
     /** Wander target, in dp from her spot on the bar. */
     var wanderDp = 0f
+        private set
+
+    /** When she slashed the pill (for the swing pose), or a large negative while she hasn't. */
+    var slashAt = Long.MIN_VALUE / 2
         private set
 
     /** When the current mood started. */
@@ -83,6 +91,32 @@ class MascotBrain(private val random: Random = Random.Default) {
         set(Mood.Moment, now, momentMs(Moment.Curious))
     }
 
+    /** The glass pill was dropped on Home: she runs for it (waking up if she has to). */
+    fun pillDropped(now: Long) {
+        if (mood !in PILL_MOODS) return
+        set(Mood.Chase, now, null)
+    }
+
+    /** She is under the pill: jump (or swing). */
+    fun reachedPill(now: Long) {
+        if (mood == Mood.Chase) set(Mood.Leap, now, null)
+    }
+
+    /**
+     * The sword hit the pill. [airborne] false is a swing from the bar, which
+     * ends in a little victory once the swing is over.
+     */
+    fun slashed(now: Long, airborne: Boolean) {
+        if (mood != Mood.Leap) return
+        slashAt = now
+        if (!airborne) until = now + GROUND_SLASH_MS
+    }
+
+    /** The pill was grabbed again (or hidden) before she got it. */
+    fun pillTaken(now: Long) {
+        if (mood == Mood.Chase || mood == Mood.Leap) set(if (awayFromHome) Mood.Walking else Mood.Idle, now, null)
+    }
+
     fun longPress(now: Long) {
         if (busy) return
         pokes.clear()
@@ -101,6 +135,8 @@ class MascotBrain(private val random: Random = Random.Default) {
     /** She hit the bar (first contact of a fall) at peak speed [impactDp] dp/s. */
     fun land(impactDp: Float, now: Long) {
         when {
+            // Her own jump: always a happy landing.
+            mood == Mood.Leap -> set(Mood.Happy, now, HAPPY_MS)
             impactDp >= CRY_IMPACT -> set(Mood.Crying, now, CRY_MS)
             impactDp >= DIZZY_IMPACT -> set(Mood.Dizzy, now, DIZZY_MS)
             else -> set(Mood.SoftLanding, now, SOFT_LANDING_MS)
@@ -112,7 +148,9 @@ class MascotBrain(private val random: Random = Random.Default) {
      * [music] is whether a media session is playing.
      */
     fun tick(now: Long, quietForMs: Long = 0L, music: Boolean = false) {
-        if (now >= until) set(if (awayFromHome) Mood.Walking else Mood.Idle, now, null)
+        if (now >= until) {
+            if (mood == Mood.Leap) set(Mood.Happy, now, HAPPY_MS) else set(if (awayFromHome) Mood.Walking else Mood.Idle, now, null)
+        }
         when (mood) {
             Mood.Sleeping -> when {
                 quietForMs < WAKE_TOUCH_MS -> set(Mood.Surprised, now, SURPRISE_MS) // woken with a start
@@ -181,10 +219,17 @@ class MascotBrain(private val random: Random = Random.Default) {
         const val WANDER_CHANCE = 0.25f
         const val DUEL_LINGER_MS = 1_400L
         const val POINT_LINGER_MS = 1_800L
+        const val GROUND_SLASH_MS = 600L
 
         /** Moods a finger elsewhere on Home interrupts (sulking, held or dazed she ignores it). */
         private val FINGER_MOODS = setOf(
             Mood.Idle, Mood.Moment, Mood.Wander, Mood.Walking, Mood.Dancing, Mood.Happy, Mood.Duel, Mood.Point,
+        )
+
+        /** Moods the dropped pill interrupts (held, falling or sulking she ignores it). */
+        private val PILL_MOODS = setOf(
+            Mood.Idle, Mood.Moment, Mood.Wander, Mood.Walking, Mood.Dancing, Mood.Happy, Mood.Duel, Mood.Point,
+            Mood.Sleeping, Mood.SoftLanding, Mood.Surprised,
         )
 
         fun momentMs(m: Moment): Long = when (m) {

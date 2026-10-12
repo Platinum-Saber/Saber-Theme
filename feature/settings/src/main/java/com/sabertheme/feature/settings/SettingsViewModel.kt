@@ -121,6 +121,10 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setMascotOutfit(outfit) }
     }
 
+    fun setMascotPill(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setMascotPill(enabled) }
+    }
+
     fun setMascotMessageCloud(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setMascotMessageCloud(enabled) }
     }

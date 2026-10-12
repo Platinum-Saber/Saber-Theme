@@ -66,4 +66,26 @@ class MascotPhysicsTest {
         assertThat(physics.walkToward(900f, speedDp = 40f, dt = 1f)).isTrue()
         assertThat(physics.x).isEqualTo(900f)
     }
+
+    @Test
+    fun leapPeaksAtTheTargetHeightUnderTheTarget() {
+        physics.place(800f, 1500f)
+        assertThat(physics.leapTo(500f, 900f)).isTrue()
+        var apexY = Float.MAX_VALUE
+        var apexX = 0f
+        while (physics.vy < 0f) {
+            physics.step(1f / 240f)
+            if (physics.y < apexY) { apexY = physics.y; apexX = physics.x }
+        }
+        // Stepped integration peaks a little low (about vy * dt / 2); the slash fires at the real apex anyway.
+        assertThat(apexY).isWithin(4f * dp).of(900f)
+        assertThat(apexX).isWithin(4f * dp).of(500f)
+    }
+
+    @Test
+    fun noLeapWhenTheTargetIsNotAbove() {
+        physics.place(800f, 1500f)
+        assertThat(physics.leapTo(500f, 1600f)).isFalse()
+        assertThat(physics.airborne).isFalse()
+    }
 }
