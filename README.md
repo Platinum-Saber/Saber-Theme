@@ -49,6 +49,8 @@ Recent apps belong to One UI Home, not to Saber, so Saber can't restyle them dir
 2. Theme Park → Icon → Create new → Icon → Iconpack → **Saber Icons**, save, then Apply. The glyphs float without a background, like Saber's bare icons.
 3. After updating the Saber Icons APK, create and apply the icon theme again: Theme Park copies the icons when it saves.
 
+For glass keys on Samsung Keyboard: Theme Park → Keyboard → Create new. Set the background image to a blurred, darkened copy of your wallpaper, the key colours to translucent white (about `26FFFFFF`; function keys `1FFFFFFF`), key text to white and the key preview to `CC1A1C22`. Light and dark mode keep separate colours. The toolbar strip above the keys stays solid.
+
 To hide the recommended-apps row at the bottom of Recents: open Recents → ⋮ → Settings → turn off **Show recommended apps**.
 
 ## Docs
