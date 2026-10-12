@@ -29,8 +29,24 @@ class IconMapperTest {
     }
 
     @Test
+    fun differentBrandsNeverShareAGlyph() {
+        val shared = PACKAGE_GLYPHS.entries.groupBy({ it.value }, { it.key })
+            .values.map { it.toSet() }.filter { it.size > 1 }
+        assertThat(shared.filterNot { it in VARIANTS }).isEmpty()
+    }
+
+    @Test
     fun everyGlyphHasAPackage() {
         val mapped = PACKAGE_GLYPHS.values.toSet()
         assertThat(AppGlyph.entries.filterNot { it in mapped }).isEmpty()
+    }
+
+    private companion object {
+        /** Packages that are the same app, so they may share a glyph. */
+        val VARIANTS = setOf(
+            setOf("com.whatsapp", "com.whatsapp.w4b"),
+            setOf("com.google.android.dialer", "com.android.dialer"),
+            setOf("com.samsung.android.app.watchmanager", "com.samsung.accessory"),
+        )
     }
 }

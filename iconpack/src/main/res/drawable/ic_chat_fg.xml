@@ -11,7 +11,7 @@
         android:translateX="33"
         android:translateY="33">
         <path
-            android:pathData="M12 3.5a8.5 8.5 0 0 0-7.4 12.7L3.5 20.5l4.4-1.1A8.5 8.5 0 1 0 12 3.5z M9 10.5c.3 1.8 2.2 3.8 4.5 4.5"
+            android:pathData="M12 3.5a8.5 8.5 0 0 0-7.4 12.7L3.5 20.5l4.4-1.1A8.5 8.5 0 1 0 12 3.5z M9 7.75h1.5l.75 2-1 .75a5.5 5.5 0 0 0 3.25 3.25l.75-1 2 .75v1.5a1 1 0 0 1-1 1A8.25 8.25 0 0 1 8 8.75a1 1 0 0 1 1-1z"
             android:strokeColor="#FFFFFFFF"
             android:strokeWidth="1.75"
             android:strokeLineCap="round"

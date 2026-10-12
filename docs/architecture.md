@@ -363,6 +363,9 @@ weather cache.
   `GeneratedGlyphs.kt` (`AppGlyph`, `UiGlyph`, package map from
   `design/icons/packages.json`); `node tools/build-plugin.mjs` bundles the
   Figma plugin into `design/figma-plugin/dist/code.js`.
+- One glyph per brand: a `packages.json` key lists several packages only
+  for variants of the same app (WhatsApp + Business, Google/AOSP dialer,
+  Galaxy Wearable + its accessory service); `IconMapperTest` enforces it.
 - App icon: the Platinum-Saber logo (Figma "Classic · Metallic") lives in
   `design/logo/saber-logo-classic-metallic.svg`; `node tools/build-app-icon.mjs`
   converts it into `ic_launcher_foreground` (gradients, mask halves as
