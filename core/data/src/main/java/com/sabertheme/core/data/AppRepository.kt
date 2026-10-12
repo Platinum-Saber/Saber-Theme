@@ -115,9 +115,23 @@ class AppRepository @Inject constructor(@ApplicationContext private val context:
         icon?.monochrome
     }
 
-    /** The app's full launcher icon (for its dominant colour). */
+    /**
+     * The app's own launcher icon (for its dominant colour). Read from the
+     * app's resources: with a One UI icon theme applied (Theme Park + the
+     * Saber pack), LauncherApps returns the themed glyph instead.
+     */
     suspend fun fullIcon(key: AppKey): Drawable? = withContext(Dispatchers.Default) {
-        infos[key]?.getIcon(0)
+        val info = infos[key] ?: return@withContext null
+        val own = runCatching {
+            val res = info.activityInfo.iconResource
+            if (res == 0) {
+                null
+            } else {
+                context.packageManager.getResourcesForApplication(info.applicationInfo)
+                    .getDrawableForDensity(res, context.resources.displayMetrics.densityDpi, null)
+            }
+        }.getOrNull()
+        own ?: info.getIcon(0)
     }
 
     /** Starts [key]; [sourceBounds] (window px) lets the system animate from the icon. */
