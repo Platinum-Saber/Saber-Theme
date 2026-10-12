@@ -3,7 +3,7 @@ package com.sabertheme.core.designsystem.glass
 /**
  * One AGSL pass per glass surface, bounded to the surface's own rect:
  * rounded-rect SDF -> edge refraction into the cached blurred wallpaper,
- * tint, specular rim lit from [light], border, and a press bloom.
+ * tint, optional accent colour (icon tiles), specular rim lit from [light], border, and a press bloom.
  *
  * Coordinates are local surface pixels. `origin` maps them into wallpaper
  * pixels; `backdropScale` maps wallpaper pixels into the blurred bitmap.
@@ -15,6 +15,7 @@ uniform float radius;
 uniform float2 origin;
 uniform float backdropScale;
 uniform float4 tint;
+uniform float4 accent;
 uniform float refraction;
 uniform float2 light;
 uniform float highlight;
@@ -49,6 +50,7 @@ half4 main(float2 coord) {
     float2 offset = -n * edge * edge * refraction * band;
     float3 c = backdrop.eval((origin + coord + offset) * backdropScale).rgb;
     c = mix(c, tint.rgb, tint.a);
+    c = mix(c, accent.rgb, accent.a);
 
     // Specular rim: the edge facing the light is bright, the opposite edge glints.
     float facing = max(dot(n, light), 0.0);

@@ -125,7 +125,9 @@ class HomeActivity : ComponentActivity() {
                 env.effects = env.effects.copy(tilt = settings.tiltEnabled)
                 if (!settings.tiltEnabled) env.tiltParallax = Offset.Zero
             }
-            val icons = remember(settings.iconStyle, settings.showLabels) { IconAppearance(settings.iconStyle, settings.showLabels) }
+            val icons = remember(settings.iconStyle, settings.showLabels, settings.iconTint) {
+                IconAppearance(settings.iconStyle, settings.showLabels, settings.iconTint)
+            }
 
             CompositionLocalProvider(LocalGlassEnvironment provides env, LocalIconAppearance provides icons) {
                 SaberTheme(dark = env.backdrop?.dark ?: true) {

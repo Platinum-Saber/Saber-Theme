@@ -18,7 +18,8 @@ import com.sabertheme.core.designsystem.theme.GlassMaterial
 /**
  * Liquid-glass container. The public API stays fixed whatever engine draws it.
  * When [onClick] or [onLongClick] is set, the glass answers touch: it
- * compresses, blooms from the finger and ticks.
+ * compresses, blooms from the finger and ticks. [accent] tints the glass
+ * with a colour (its alpha is the strength), after the material tint.
  */
 @Composable
 fun GlassSurface(
@@ -28,6 +29,7 @@ fun GlassSurface(
     pressState: GlassPressState? = null,
     onClick: (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
+    accent: Color = Color.Transparent,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val interactive = onClick != null || onLongClick != null
@@ -48,7 +50,7 @@ fun GlassSurface(
             // backdrop origin every paging frame, and only the glass rect
             // should re-record, not the shadow or the glyph.
             .graphicsLayer()
-            .glassBackground(shape, material, press)
+            .glassBackground(shape, material, press, accent)
             .graphicsLayer(),
         content = content,
     )

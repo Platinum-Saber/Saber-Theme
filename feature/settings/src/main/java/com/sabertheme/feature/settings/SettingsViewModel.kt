@@ -109,6 +109,10 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setShowLabels(show) }
     }
 
+    fun setIconTint(value: Float) {
+        viewModelScope.launch { settingsRepository.setIconTint(value) }
+    }
+
     fun setMascotEnabled(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setMascotEnabled(enabled) }
     }

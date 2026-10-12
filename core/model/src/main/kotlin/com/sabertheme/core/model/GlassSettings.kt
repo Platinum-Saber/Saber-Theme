@@ -28,6 +28,8 @@ data class GlassSettings(
     val wallpaper: WallpaperChoice = WallpaperChoice.Default,
     val iconStyle: IconStyle = IconStyle.Tile,
     val showLabels: Boolean = true,
+    /** 0..[MAX_ICON_TINT]: glass icon tiles take on each app's dominant colour. */
+    val iconTint: Float = 0f,
     /** Device tilt moves the light and the wallpaper. */
     val tiltEnabled: Boolean = true,
     /** The Saber mascot on the search bar. */
@@ -37,7 +39,11 @@ data class GlassSettings(
     val mascotMessageCloud: Boolean = true,
     /** Double-tap empty Home space locks the phone (needs the accessibility service). */
     val doubleTapLock: Boolean = true,
-)
+) {
+    companion object {
+        const val MAX_ICON_TINT = 0.5f
+    }
+}
 
 /** Mascot outfits; drawn by :feature:mascot. */
 enum class MascotOutfit { Armor, Winter, Casual }

@@ -23,7 +23,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.semantics.contentDescription
@@ -35,9 +37,13 @@ import androidx.compose.ui.unit.dp
 import com.sabertheme.core.designsystem.glass.GlassMotion
 import com.sabertheme.core.designsystem.glass.GlassShape
 import com.sabertheme.core.designsystem.glass.GlassSurface
+import com.sabertheme.core.designsystem.glass.TintSolver
+import com.sabertheme.core.designsystem.theme.DarkSaberColors
 import com.sabertheme.core.designsystem.theme.GlassMaterial
+import com.sabertheme.core.designsystem.theme.LightSaberColors
 import com.sabertheme.core.designsystem.theme.Radius
 import com.sabertheme.core.designsystem.theme.Saber
+import com.sabertheme.core.designsystem.theme.SaberColors
 import com.sabertheme.core.icons.AppGlyphIcon
 import com.sabertheme.core.model.IconStyle
 
@@ -56,9 +62,9 @@ fun rememberBoundsRef() = remember { BoundsRef() }
 
 fun Modifier.trackBounds(ref: BoundsRef) = onGloballyPositioned { ref.rect = it.boundsInWindow() }
 
-/** User icon settings, provided once at the root. */
+/** User icon settings, provided once at the root. [tint]: 0..0.5 of each app's colour on its glass tile. */
 @Immutable
-data class IconAppearance(val style: IconStyle = IconStyle.Tile, val showLabels: Boolean = true)
+data class IconAppearance(val style: IconStyle = IconStyle.Tile, val showLabels: Boolean = true, val tint: Float = 0f)
 
 val LocalIconAppearance = staticCompositionLocalOf { IconAppearance() }
 
@@ -75,9 +81,15 @@ fun AppTile(
     onLongClick: ((Rect, Offset) -> Unit)?,
 ) {
     val bounds = rememberBoundsRef()
-    if (LocalIconAppearance.current.style == IconStyle.Bare) {
+    val appearance = LocalIconAppearance.current
+    if (appearance.style == IconStyle.Bare) {
         BareTile(app, modifier.size(size).trackBounds(bounds), size, bounds, onClick, onLongClick)
         return
+    }
+    val colors = Saber.colors
+    val accent = app.accent?.takeIf { appearance.tint > 0f }
+    val glyph = remember(accent, appearance.tint, colors) {
+        accent?.let { tintedGlyph(colors, it, appearance.tint) } ?: colors.glyph
     }
     GlassSurface(
         modifier.size(size).trackBounds(bounds).semantics { contentDescription = app.entry.label },
@@ -85,10 +97,25 @@ fun AppTile(
         material = GlassMaterial.Thin,
         onClick = onClick?.let { { it(bounds.rect) } },
         onLongClick = onLongClick?.let { { it(bounds.rect, bounds.rect.center) } },
+        accent = accent?.let { Color(it).copy(alpha = appearance.tint) } ?: Color.Transparent,
     ) {
-        AppGlyphIcon(app.icon, Saber.colors.glyph, Modifier.align(Alignment.Center), size * (24f / 56f))
+        AppGlyphIcon(app.icon, glyph, Modifier.align(Alignment.Center), size * (24f / 56f))
     }
 }
+
+/**
+ * Glyph colour on a tile tinted [amount] toward [accent]: the theme glyph
+ * while it keeps 3:1 against the tint, else whichever of the light and dark
+ * glyphs reads better.
+ */
+internal fun tintedGlyph(colors: SaberColors, accent: Int, amount: Float): Color {
+    val tile = TintSolver.luminance(TintSolver.mix(colors.glassTint.toArgb(), accent, amount))
+    fun contrast(c: Color) = TintSolver.contrast(tile, TintSolver.luminance(c.toArgb()))
+    if (contrast(colors.glyph) >= MIN_GLYPH_CONTRAST) return colors.glyph
+    return listOf(LightSaberColors.glyph, DarkSaberColors.glyph).maxBy(::contrast)
+}
+
+private const val MIN_GLYPH_CONTRAST = 3f
 
 @Composable
 private fun BareTile(

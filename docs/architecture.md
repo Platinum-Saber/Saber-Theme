@@ -268,7 +268,7 @@ blurs live. The Tilt effects setting maps onto `env.effects.tilt`.
 - `SettingsScreen` (`:feature:settings`): full-screen Thick glass page
   (Figma "Settings") with groups Wallpaper (bundled + imported photos),
   Glass (intensity slider with live preview, tilt), Icons (Glass tile /
-  Bare, labels), Home screen (default home via `RoleManager.ROLE_HOME`,
+  Bare, colour tint, labels), Home screen (default home via `RoleManager.ROLE_HOME`,
   grid) and About (version; Glass Lab in debug and benchmark builds).
 - Icon style and labels reach every surface through `LocalIconAppearance`
   (`:core:ui`), provided at the root. Bare draws the glyph without glass at
@@ -374,6 +374,13 @@ weather cache.
   logo disc filling the 66-unit safe zone.
 - Rendering: glyph centred on a glass squircle, or bare (Settings → Icon
   style), via `LocalIconAppearance`.
+- Colour tint (Settings → Icons, 0–50%, Glass tile only): `AppIconResolver`
+  draws each app's real icon at 32 px off the main thread and
+  `DominantColor` (pure, tested) picks the strongest saturated hue (null for
+  grey icons); `LauncherApp.accent` carries it. `GlassSurface(accent)` mixes
+  it in after the material tint (`accent` uniform, always written because
+  programs are pooled). The glyph flips to the other theme glyph colour when
+  it falls below 3:1 on the tinted tile.
 - Lookup order: mapped glyph → adaptive-icon monochrome layer → generated
   letter glyph.
 - Icon pack (`:iconpack`, "Saber Icons"): `node tools/dump-components.mjs`

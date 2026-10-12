@@ -27,6 +27,7 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
                 wallpaper = decode(prefs[WALLPAPER]),
                 iconStyle = decodeIconStyle(prefs[ICON_STYLE]),
                 showLabels = prefs[SHOW_LABELS] ?: true,
+                iconTint = (prefs[ICON_TINT] ?: 0f).coerceIn(0f, GlassSettings.MAX_ICON_TINT),
                 tiltEnabled = prefs[TILT] ?: true,
                 mascotEnabled = prefs[MASCOT] ?: true,
                 mascotOutfit = MascotOutfit.entries.firstOrNull { it.name == prefs[MASCOT_OUTFIT] } ?: MascotOutfit.Armor,
@@ -50,6 +51,10 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
 
     suspend fun setShowLabels(show: Boolean) {
         store.edit { it[SHOW_LABELS] = show }
+    }
+
+    suspend fun setIconTint(value: Float) {
+        store.edit { it[ICON_TINT] = value.coerceIn(0f, GlassSettings.MAX_ICON_TINT) }
     }
 
     suspend fun setTiltEnabled(enabled: Boolean) {
@@ -77,6 +82,7 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
         val WALLPAPER = stringPreferencesKey("wallpaper")
         val ICON_STYLE = stringPreferencesKey("icon_style")
         val SHOW_LABELS = booleanPreferencesKey("show_labels")
+        val ICON_TINT = floatPreferencesKey("icon_tint")
         val TILT = booleanPreferencesKey("tilt")
         val MASCOT = booleanPreferencesKey("mascot")
         val MASCOT_OUTFIT = stringPreferencesKey("mascot_outfit")

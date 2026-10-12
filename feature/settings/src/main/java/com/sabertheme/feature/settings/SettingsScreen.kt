@@ -66,9 +66,11 @@ import com.sabertheme.core.designsystem.theme.GlassMaterial
 import com.sabertheme.core.designsystem.theme.Radius
 import com.sabertheme.core.designsystem.theme.Saber
 import com.sabertheme.core.icons.UiGlyph
+import com.sabertheme.core.model.GlassSettings
 import com.sabertheme.core.model.HomeLayout
 import com.sabertheme.core.model.IconStyle
 import com.sabertheme.core.model.MascotOutfit
+import kotlin.math.roundToInt
 
 private val SIDE = 18.dp
 
@@ -194,6 +196,10 @@ fun SettingsScreen(
                                 onSelect = viewModel::setIconStyle,
                             )
                         }
+                        if (settings.iconStyle == IconStyle.Tile) {
+                            Divider()
+                            IconTintRow(settings.iconTint, viewModel::setIconTint)
+                        }
                         Divider()
                         SettingRow("Show labels") {
                             GlassSwitch(settings.showLabels, viewModel::setShowLabels)
@@ -237,7 +243,23 @@ fun SettingsScreen(
     }
 }
 
-/** "Default home app": Saber when it holds ROLE_HOME, else a request; tapping when held opens the system chooser. */
+/** Glass tiles take each app's colour; the slider's full travel is 0..50%. */
+@Composable
+private fun IconTintRow(tint: Float, onChange: (Float) -> Unit) {
+    val max = GlassSettings.MAX_ICON_TINT
+    var dragging by remember { mutableStateOf<Float?>(null) }
+    LaunchedEffect(tint) { dragging = null }
+    val percent = ((dragging ?: tint) * 100).roundToInt()
+    SettingRow("Colour tint", if (percent == 0) "Off" else "$percent% of each app's colour") {
+        GlassSlider(
+            value = tint / max,
+            modifier = Modifier.width(140.dp),
+            onValueChange = { dragging = it * max },
+            onValueChangeFinished = { onChange(it * max) },
+        )
+    }
+}
+
 /** Switch plus the accessibility service status (tap the status to open its settings). */
 @Composable
 private fun DoubleTapLockRow(visible: Boolean, enabled: Boolean, onChange: (Boolean) -> Unit) {
@@ -260,6 +282,7 @@ private fun DoubleTapLockRow(visible: Boolean, enabled: Boolean, onChange: (Bool
     }
 }
 
+/** "Default home app": Saber when it holds ROLE_HOME, else a request; tapping when held opens the system chooser. */
 @Composable
 private fun DefaultHomeRow(visible: Boolean) {
     val context = LocalContext.current

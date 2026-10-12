@@ -45,21 +45,28 @@ sealed interface GlassShape {
 /**
  * Draws a glass background that samples the cached blurred wallpaper behind
  * this node's window position. Reads environment and [press] state only in
- * draw, so tilt and touch never recompose.
+ * draw, so tilt and touch never recompose. [accent] (alpha = strength) is
+ * mixed in after the material tint; icon tiles use it for the app's colour.
  */
-fun Modifier.glassBackground(shape: GlassShape, material: GlassMaterial, press: GlassPressState? = null): Modifier =
-    this then GlassElement(shape, material, press)
+fun Modifier.glassBackground(
+    shape: GlassShape,
+    material: GlassMaterial,
+    press: GlassPressState? = null,
+    accent: Color = Color.Transparent,
+): Modifier = this then GlassElement(shape, material, press, accent)
 
 private data class GlassElement(
     val shape: GlassShape,
     val material: GlassMaterial,
     val press: GlassPressState?,
+    val accent: Color,
 ) : ModifierNodeElement<GlassNode>() {
-    override fun create() = GlassNode(shape, material, press)
+    override fun create() = GlassNode(shape, material, press, accent)
     override fun update(node: GlassNode) {
         node.shape = shape
         node.material = material
         node.press = press
+        node.accent = accent
         node.invalidateDraw()
     }
 }
@@ -68,6 +75,7 @@ private class GlassNode(
     var shape: GlassShape,
     var material: GlassMaterial,
     var press: GlassPressState?,
+    var accent: Color,
 ) : Modifier.Node(),
     DrawModifierNode,
     GlobalPositionAwareModifierNode,
@@ -123,6 +131,8 @@ private class GlassNode(
         u.set("backdropScale", backdrop.blurScale)
         val alpha = if (effects.adaptiveTint) adaptiveTint(backdrop, colors, originX, originY) else material.tintAlpha(colors.isDark)
         u.setColor("tint", colors.glassTint, alpha)
+        // Always written: pooled programs may carry another node's accent.
+        u.setColor("accent", accent, accent.alpha)
         u.set("refraction", if (effects.refraction) material.refraction * intensity else 0f)
         u.set("light", light.x, light.y)
         u.set("highlight", material.highlight * (0.4f + 0.6f * intensity))

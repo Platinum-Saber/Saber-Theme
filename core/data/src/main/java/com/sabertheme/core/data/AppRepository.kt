@@ -115,6 +115,11 @@ class AppRepository @Inject constructor(@ApplicationContext private val context:
         icon?.monochrome
     }
 
+    /** The app's full launcher icon (for its dominant colour). */
+    suspend fun fullIcon(key: AppKey): Drawable? = withContext(Dispatchers.Default) {
+        infos[key]?.getIcon(0)
+    }
+
     /** Starts [key]; [sourceBounds] (window px) lets the system animate from the icon. */
     fun launch(key: AppKey, sourceBounds: Rect?, options: Bundle?): Boolean {
         val info = infos[key] ?: return false
