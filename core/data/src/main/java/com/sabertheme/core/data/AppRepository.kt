@@ -111,17 +111,19 @@ class AppRepository @Inject constructor(@ApplicationContext private val context:
 
     /** The adaptive icon's monochrome layer, if the app ships one. */
     suspend fun monochromeIcon(key: AppKey): Drawable? = withContext(Dispatchers.Default) {
-        val icon = infos[key]?.getIcon(0) as? AdaptiveIconDrawable
-        icon?.monochrome
+        (ownIcon(key) as? AdaptiveIconDrawable)?.monochrome
     }
 
+    /** The app's own launcher icon (for its dominant colour). */
+    suspend fun fullIcon(key: AppKey): Drawable? = withContext(Dispatchers.Default) { ownIcon(key) }
+
     /**
-     * The app's own launcher icon (for its dominant colour). Read from the
-     * app's resources: with a One UI icon theme applied (Theme Park + the
-     * Saber pack), LauncherApps returns the themed glyph instead.
+     * Read from the app's resources: with a One UI icon theme applied (Theme
+     * Park + the Saber pack), LauncherApps returns flattened themed icons,
+     * which lose their colour and monochrome layer.
      */
-    suspend fun fullIcon(key: AppKey): Drawable? = withContext(Dispatchers.Default) {
-        val info = infos[key] ?: return@withContext null
+    private fun ownIcon(key: AppKey): Drawable? {
+        val info = infos[key] ?: return null
         val own = runCatching {
             val res = info.activityInfo.iconResource
             if (res == 0) {
@@ -131,7 +133,7 @@ class AppRepository @Inject constructor(@ApplicationContext private val context:
                     .getDrawableForDensity(res, context.resources.displayMetrics.densityDpi, null)
             }
         }.getOrNull()
-        own ?: info.getIcon(0)
+        return own ?: info.getIcon(0)
     }
 
     /** Starts [key]; [sourceBounds] (window px) lets the system animate from the icon. */
