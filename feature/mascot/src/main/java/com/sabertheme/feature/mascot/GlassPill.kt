@@ -23,8 +23,7 @@ private const val PILL_H_DP = 32f
 /**
  * One UI hands a touch that starts just under the status bar to its own
  * pull-down gesture (measured on the S23: drags from 40 dp down stay with
- * Home), so the docked pill is pulled from a strip this far below it, marked
- * by a small handle.
+ * Home), so the docked pill is pulled from an invisible strip this far below it.
  */
 private const val GRAB_GAP_DP = 16f
 private const val GRAB_HEIGHT_DP = 40f
@@ -63,7 +62,7 @@ internal class GlassPill(private val density: Density) {
 
     private fun Float.dp() = this * density.density
 
-    /** Where touches grab it: while docked, the strip under its handle (see [GRAB_GAP_DP]). */
+    /** Where touches grab it: while docked, the invisible strip just below it (see [GRAB_GAP_DP]). */
     val grabZone: Rect
         get() = when (state) {
             State.Docked -> if (dock == Rect.Zero) Rect.Zero else {
@@ -158,15 +157,6 @@ internal class GlassPill(private val density: Density) {
                 // A new pill swells into place around the camera.
                 val pop = if (since in 0f..0.6f && !env.reducedMotion) 1f - exp(-since * 12f) + 0.15f * exp(-since * 6f) * sin(since * 14f) else 1f
                 scale(pop.coerceAtLeast(0.01f), pivot = b.center) { pill(left, b, windowOffset, env, colors, 1f) }
-                if (state == State.Docked) {
-                    // The handle to pull it by, centred in its grab strip.
-                    val zone = grabZone.translate(-origin)
-                    val hw = 14f.dp()
-                    drawLine(
-                        colors.glassHighlight, Offset(zone.center.x - hw, zone.top + 6f.dp()), Offset(zone.center.x + hw, zone.top + 6f.dp()),
-                        strokeWidth = 4f.dp(), cap = StrokeCap.Round, alpha = 0.7f * pop.coerceIn(0f, 1f),
-                    )
-                }
             }
         }
     }

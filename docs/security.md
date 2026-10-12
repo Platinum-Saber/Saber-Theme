@@ -24,8 +24,8 @@ what it protects, how, and how to re-check it. Audit: 2026-10-10.
 | Network | HTTPS only, system CAs only (`network_security_config.xml`). Location goes to Open-Meteo rounded to 2 decimals (~1 km). Responses are capped at 512 KB. |
 | Exported components | HOME activity (it acts only on `CATEGORY_HOME`). Accessibility and notification listener services, guarded by system bind permissions. Glance widget receivers. `CalendarChangeReceiver`, which only redraws the calendar widget and collapses bursts into one redraw a second later. Everything else is `exported="false"`. |
 | Accessibility | `LockScreenService` requests no event types and can't read window content; it only performs `GLOBAL_ACTION_LOCK_SCREEN`. |
-| Untrusted input | Artwork only from `content://` URIs (never `file://`), at most 12 MB, decoded downscaled. Wallpaper files are opened only by names Saber made (`UUID.webp`), so a tampered setting like `../x` reads as missing. Imports are re-encoded, which strips EXIF/GPS. |
-| Caches | Icon cache pruned to installed apps. Artwork cache 8 entries, failed-artwork set 64, glyph cache LRU by bytes, launch counts capped at 64 apps. |
+| Untrusted input | Artwork only from `content://` URIs (never `file://`), at most 12 MB, decoded downscaled. Wallpaper files are opened only by names Saber made (`UUID.webp`), so a tampered setting like `../x` reads as missing. Imports are re-encoded, which strips EXIF/GPS. App icons for the colour tint are loaded from each app's own resources (as LauncherApps does), inside `runCatching`, drawn at 32 px off the main thread; only the resulting colour is kept. |
+| Caches | Icon and icon-colour caches pruned to installed apps. Artwork cache 8 entries, failed-artwork set 64, glyph cache LRU by bytes, launch counts capped at 64 apps. |
 | Logging | Warnings only, with package names at most; never message text, locations or contacts. |
 | Build | Release builds are minified and not debuggable. The benchmark build is `profileable` for shell only. Security lint checks fail the build (`SECURITY_LINT_ERRORS` in `build-logic/.../ProjectExtensions.kt`). Debug builds run StrictMode (see below). |
 

@@ -18,8 +18,8 @@ android {
     defaultConfig {
         applicationId = "com.sabertheme.launcher"
         // major * 10000 + minor * 100 + patch
-        versionCode = 10000
-        versionName = "1.0.0"
+        versionCode = 10001
+        versionName = "1.0.1"
     }
     signingConfigs {
         if (keystoreProps != null) {
