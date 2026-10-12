@@ -218,8 +218,9 @@ blurs live. The Tilt effects setting maps onto `env.effects.tilt`.
 - Recents is One UI Home's (only the system launcher may provide it), and
   `HomeActivity` is `excludeFromRecents`. Its app icons follow the Samsung
   icon theme, so the Saber Icons pack applied through Good Lock → Theme Park
-  (Icon → Iconpack) themes them, verified on the S23; card colours stay One
-  UI's. Settings → Home screen → "Recent apps" says so.
+  (Icon → Iconpack) themes them, verified on the S23; the glyphs float without a tile
+  (leave Theme Park's Effects on Basic: Glass skips pack icons). The card
+  itself is the app's own snapshot and stays One UI's. Settings → Home screen → "Recent apps" says so.
 - Long-press empty space: Edit home screen, Widgets (picker), Wallpaper &
   style and Launcher settings (both open Settings). Long-press an app: the
   `AppActions` menu (Remove from home, App info, Uninstall for
@@ -391,14 +392,18 @@ weather cache.
 - Icon pack (`:iconpack`, "Saber Icons"): `node tools/dump-components.mjs`
   reads the device's launcher activities over adb and merges those of
   `packages.json` packages into `design/icons/components.json` (never drops
-  entries). `node tools/build-iconpack.mjs` generates adaptive icons
-  (`drawable-anydpi/ic_<key>`: opaque `@color/icon_bg` background, glyph
-  foreground scaled 1.75x into the 108-unit canvas, same glyph as
-  `<monochrome>`), `res/xml/appfilter.xml` + `assets/appfilter.xml` and
-  `res/xml/drawable.xml`. The manifest declares the ADW/Nova/Apex/Go/
+  entries). `node tools/build-iconpack.mjs` generates plain transparent
+  vector icons (`drawable-anydpi/ic_<key>`: the glyph centred in a 36-unit
+  canvas, no background). They are not adaptive icons on purpose: Theme Park
+  flattens an adaptive icon's transparent background to black, while a plain
+  vector stays transparent, so the glyph floats in One UI Recents. Also
+  `res/xml/appfilter.xml` + `assets/appfilter.xml`, `res/xml/drawable.xml`
+  and the pack's own launcher foreground (`ic_launcher_fg`, opaque
+  `pack_icon_bg`). The manifest declares the ADW/Nova/Apex/Go/
   Lawnchair theme actions on `InfoActivity`; `AppFilterTest` checks the
   generated files. Verified in Lawnchair 15 (vector adaptive icons work, no
-  PNG rasterising needed); unmapped apps keep their own icons.
+  PNG rasterising needed) with the earlier adaptive format; re-check the
+  plain vectors there. Unmapped apps keep their own icons.
 
 ## Mascot
 An interactive chibi Saber (`:feature:mascot`) stands on the right end of the

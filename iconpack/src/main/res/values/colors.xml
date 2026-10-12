@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Opaque Glance dark fill (TintDark in core/designsystem Color.kt). -->
-    <color name="icon_bg">#FF1A1C22</color>
+    <!-- Themed app icons: transparent, so the glyph floats over whatever the
+         host draws behind it (One UI Recents, Theme Park, other launchers). -->
+    <color name="icon_bg">#00000000</color>
+    <!-- The pack's own launcher icon: opaque Glance dark fill (TintDark in core/designsystem Color.kt). -->
+    <color name="pack_icon_bg">#FF1A1C22</color>
 </resources>

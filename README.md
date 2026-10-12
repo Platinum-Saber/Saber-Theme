@@ -46,7 +46,8 @@ Download `Saber-1.0.0.apk` from [Releases](https://github.com/Platinum-Saber/Sab
 ### Theme the rest of One UI
 Recent apps belong to One UI Home, not to Saber, so Saber can't restyle them directly. To bring the Saber glyphs there too (and to Settings, notifications and the share sheet):
 1. Install the Saber Icons APK, then **Good Lock** and its **Theme Park** module from the Galaxy Store.
-2. Theme Park → Icon → Create new → Icon → Iconpack → **Saber Icons**, save, then Apply.
+2. Theme Park → Icon → Create new → Icon → Iconpack → **Saber Icons**, save, then Apply. The glyphs float without a background, like Saber's bare icons.
+3. After updating the Saber Icons APK, create and apply the icon theme again: Theme Park copies the icons when it saves.
 
 To hide the recommended-apps row at the bottom of Recents: open Recents → ⋮ → Settings → turn off **Show recommended apps**.
 
