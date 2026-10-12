@@ -229,6 +229,12 @@ fun SettingsScreen(
                         Divider()
                         DoubleTapLockRow(state.visible, settings.doubleTapLock, viewModel::setDoubleTapLock)
                         Divider()
+                        SettingRow(
+                            "Recent apps",
+                            "Drawn by One UI. Apply Saber Icons with Good Lock › Theme Park › Icon › Iconpack; " +
+                                "hide its app row in Recents › ⋮ › Settings.",
+                        ) {}
+                        Divider()
                         SettingRow("Grid") { Value("${HomeLayout.COLUMNS} × ${HomeLayout.ROWS}") }
                     }
 

@@ -43,6 +43,13 @@ Every panel is liquid glass: it samples a blurred copy of the wallpaper, refract
 ## Install
 Download `Saber-1.0.0.apk` from [Releases](https://github.com/Platinum-Saber/Saber-Theme/releases), install it, then choose Saber as the default home app.
 
+### Theme the rest of One UI
+Recent apps belong to One UI Home, not to Saber, so Saber can't restyle them directly. To bring the Saber glyphs there too (and to Settings, notifications and the share sheet):
+1. Install the Saber Icons APK, then **Good Lock** and its **Theme Park** module from the Galaxy Store.
+2. Theme Park → Icon → Create new → Icon → Iconpack → **Saber Icons**, save, then Apply.
+
+To hide the recommended-apps row at the bottom of Recents: open Recents → ⋮ → Settings → turn off **Show recommended apps**.
+
 ## Docs
 - [Architecture](docs/architecture.md)
 - [Security](docs/security.md)

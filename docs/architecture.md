@@ -215,6 +215,11 @@ blurs live. The Tilt effects setting maps onto `env.effects.tilt`.
   accessibility service that only performs the global lock action; see
   `ScreenLock`). Without the service a sheet explains it and opens
   Accessibility settings; Settings → Home screen has the switch and status.
+- Recents is One UI Home's (only the system launcher may provide it), and
+  `HomeActivity` is `excludeFromRecents`. Its app icons follow the Samsung
+  icon theme, so the Saber Icons pack applied through Good Lock → Theme Park
+  (Icon → Iconpack) themes them, verified on the S23; card colours stay One
+  UI's. Settings → Home screen → "Recent apps" says so.
 - Long-press empty space: Edit home screen, Widgets (picker), Wallpaper &
   style and Launcher settings (both open Settings). Long-press an app: the
   `AppActions` menu (Remove from home, App info, Uninstall for
