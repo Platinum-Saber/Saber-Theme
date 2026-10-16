@@ -228,6 +228,10 @@ fun SettingsScreen(
                         }
                     }
 
+                    Group("Briefing") {
+                        BriefingRows(state.visible, settings, viewModel)
+                    }
+
                     Group("Home screen") {
                         DefaultHomeRow(state.visible)
                         Divider()
@@ -327,7 +331,7 @@ private fun Group(title: String, content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-private fun SettingRow(
+internal fun SettingRow(
     label: String,
     detail: String? = null,
     onClick: (() -> Unit)? = null,
@@ -350,12 +354,12 @@ private fun SettingRow(
 }
 
 @Composable
-private fun Value(text: String) {
+internal fun Value(text: String) {
     BasicText(text, style = Saber.type.body.copy(color = Saber.colors.textSecondary))
 }
 
 @Composable
-private fun Divider() {
+internal fun Divider() {
     Box(Modifier.padding(horizontal = 16.dp).fillMaxWidth().height(1.dp).background(Saber.colors.glassBorder))
 }
 

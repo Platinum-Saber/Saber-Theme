@@ -13,6 +13,7 @@ dependencies {
     implementation(projects.core.data)
     implementation(projects.core.designsystem)
     implementation(projects.core.icons)
+    implementation(projects.core.briefing)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

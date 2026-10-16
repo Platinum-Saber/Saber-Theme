@@ -5,6 +5,12 @@ import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.sabertheme.core.briefing.CallLogSource
+import com.sabertheme.core.briefing.MailLabeler
+import com.sabertheme.core.briefing.MoodleAccount
+import com.sabertheme.core.briefing.MoodleClient
+import com.sabertheme.core.briefing.MoodleException
+import com.sabertheme.core.briefing.SecretsStore
 import com.sabertheme.core.data.SettingsRepository
 import com.sabertheme.core.data.WallpaperStore
 import com.sabertheme.core.model.GlassSettings
@@ -24,6 +30,10 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val wallpaperStore: WallpaperStore,
+    private val moodleClient: MoodleClient,
+    secrets: SecretsStore,
+    private val labeler: MailLabeler,
+    private val callLog: CallLogSource,
 ) : ViewModel() {
 
     val settings: StateFlow<GlassSettings> =
@@ -132,6 +142,48 @@ class SettingsViewModel @Inject constructor(
     fun setDoubleTapLock(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setDoubleTapLock(enabled) }
     }
+
+    fun setBriefing(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setBriefing(enabled) }
+    }
+
+    fun setBriefingSpeakUrgent(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setBriefingSpeakUrgent(enabled) }
+    }
+
+    val moodle: StateFlow<MoodleAccount?> = secrets.moodle.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    private val _moodleStatus = MutableStateFlow<MoodleStatus>(MoodleStatus.Idle)
+    val moodleStatus: StateFlow<MoodleStatus> = _moodleStatus.asStateFlow()
+
+    /** Signs in once; only the token is kept. The password goes no further than this call. */
+    fun connectMoodle(site: String, username: String, password: String) {
+        if (_moodleStatus.value == MoodleStatus.Connecting) return
+        _moodleStatus.value = MoodleStatus.Connecting
+        viewModelScope.launch {
+            _moodleStatus.value = try {
+                moodleClient.connect(site, username, password)
+                MoodleStatus.Idle
+            } catch (e: MoodleException) {
+                MoodleStatus.Failed(e.message ?: "Moodle said no")
+            } catch (e: IllegalArgumentException) {
+                MoodleStatus.Failed(e.message ?: "Not a Moodle address")
+            } catch (e: java.io.IOException) {
+                MoodleStatus.Failed("Couldn't reach Moodle")
+            }
+        }
+    }
+
+    fun disconnectMoodle() {
+        viewModelScope.launch { moodleClient.disconnect() }
+    }
+
+    /** The model file's size in bytes, or null when it isn't on the phone yet. */
+    fun modelSize(): Long? = labeler.modelFile.takeIf { it.isFile }?.length()
+
+    val modelPath: String get() = labeler.modelFile.path
+
+    fun callLogGranted(): Boolean = callLog.granted()
 
     private companion object {
         const val TAG = "SettingsViewModel"
