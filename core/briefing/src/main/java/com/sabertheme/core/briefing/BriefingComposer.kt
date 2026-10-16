@@ -33,7 +33,7 @@ internal object BriefingComposer {
         "Your knight reports %s.",
     )
     private val Closers = listOf("I stand ready.", "Onward, Master!", "Fight well.")
-    const val ALL_QUIET = "All is quiet, Master. Nothing new demands your blade."
+    const val ALL_QUIET = "All is quiet, Master. Nothing demands your blade."
 
     private val Clock = DateTimeFormatter.ofPattern("HH:mm")
     private val DayMonth = DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH)
@@ -58,12 +58,13 @@ internal object BriefingComposer {
             addAll(calls(input.calls, zone))
         }.sortedWith(compareBy<Line> { it.item.urgency }.thenBy { it.item.atMs ?: Long.MAX_VALUE })
 
-        val fresh = lines.filter { it.item.key !in alreadySpoken }
+        val urgent = lines.filter { it.item.urgency == Urgency.Now && it.item.key !in alreadySpoken }
         return Briefing(
             builtAtMs = nowMs,
             items = lines.map { it.item },
-            spoken = spoken(fresh, Random(seed)),
-            urgentKeys = fresh.filter { it.item.urgency == Urgency.Now }.map { it.item.key },
+            spoken = spoken(lines, Random(seed)),
+            urgentKeys = urgent.map { it.item.key },
+            urgentSpoken = if (urgent.isEmpty()) "" else urgentSpoken(urgent),
         )
     }
 
@@ -134,19 +135,32 @@ internal object BriefingComposer {
             )
         }
 
-    private fun spoken(fresh: List<Line>, random: Random): String {
-        if (fresh.isEmpty()) return ALL_QUIET
-        val opener = Openers.random(random).format(count(fresh.size))
+    private fun spoken(lines: List<Line>, random: Random): String {
+        if (lines.isEmpty()) return ALL_QUIET
+        val opener = Openers.random(random).format(count(lines.size))
         val closer = Closers.random(random)
         var words = wordCount(opener) + wordCount(closer)
         val facts = mutableListOf<String>()
-        for (line in fresh.take(SPOKEN_FACTS)) {
+        for (line in lines.take(SPOKEN_FACTS)) {
             val fact = line.speech.replaceFirstChar { it.uppercase() } + "."
             if (words + wordCount(fact) > MAX_SPOKEN_WORDS) break
             facts += fact
             words += wordCount(fact)
         }
         return (listOf(opener) + facts + closer).joinToString(" ")
+    }
+
+    /** Unasked, so short: an alarm word, then the pressing facts. */
+    private fun urgentSpoken(urgent: List<Line>): String {
+        val facts = mutableListOf<String>()
+        var words = 2
+        for (line in urgent.take(SPOKEN_FACTS)) {
+            val fact = line.speech.replaceFirstChar { it.uppercase() } + "."
+            if (words + wordCount(fact) > MAX_SPOKEN_WORDS) break
+            facts += fact
+            words += wordCount(fact)
+        }
+        return (listOf("Master, quickly!") + facts).joinToString(" ")
     }
 
     private fun count(n: Int) = when (n) {

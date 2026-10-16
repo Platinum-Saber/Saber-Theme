@@ -93,6 +93,8 @@ fun MascotLayer(
     pillEnabled: () -> Boolean = { true },
     /** True while her voice is speaking (the briefing): she talks, mouth moving. */
     speaking: () -> Boolean = { false },
+    /** The collapsed cloud was tapped open (Home speaks the briefing then). */
+    onCloudOpened: () -> Unit = {},
 ) {
     val density = LocalDensity.current
     val view = LocalView.current
@@ -109,6 +111,7 @@ fun MascotLayer(
     var pillZone by remember { mutableStateOf(Rect.Zero) }
     val currentPillEnabled by rememberUpdatedState(pillEnabled)
     val currentSpeaking by rememberUpdatedState(speaking)
+    val currentOnCloudOpened by rememberUpdatedState(onCloudOpened)
     // Camera cutout (layer px) and status bar bottom (window px), read from the insets on layout.
     val cutout = remember { arrayOfNulls<Rect>(1) }
     val statusBar = remember { floatArrayOf(0f) }
@@ -377,6 +380,7 @@ fun MascotLayer(
                                     haptic(HapticFeedbackConstants.CLOCK_TICK)
                                     if (!cloud.expanded) {
                                         cloud.toggle(clock[0])
+                                        currentOnCloudOpened()
                                     } else {
                                         val chat = cloud.rowAt(change.position.y)
                                         cloud.collapse()

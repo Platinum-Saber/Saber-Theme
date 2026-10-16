@@ -22,13 +22,18 @@ data class BriefingItem(
     val link: String? = null,
 )
 
-/** The latest briefing: [spoken] is what she says, [urgentKeys] what she may say unasked. */
+/**
+ * The latest briefing: [spoken] is what she says when asked; [urgentSpoken]
+ * covers only [urgentKeys], the pressing items she hasn't announced yet and
+ * may say unasked.
+ */
 @Serializable
 data class Briefing(
     val builtAtMs: Long,
     val items: List<BriefingItem>,
     val spoken: String,
     val urgentKeys: List<String>,
+    val urgentSpoken: String = "",
 )
 
 /** Labels the mail labeller can give; see `MailLabeler`. */

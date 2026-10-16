@@ -117,12 +117,25 @@ class BriefingComposerTest {
     }
 
     @Test
-    fun `already spoken items stay in the cloud but leave speech and urgency`() {
+    fun `announced urgent items stay in the briefing but are not announced again`() {
         val soon = assignment.copy(dueMs = at(nowLocal.plusHours(10)))
         val briefing = compose(BriefingInput(deadlines = listOf(soon)), spoken = setOf("d1"))
         assertThat(briefing.items).hasSize(1)
+        assertThat(briefing.spoken).contains("Assignment 2 for CS3042")
         assertThat(briefing.urgentKeys).isEmpty()
-        assertThat(briefing.spoken).isEqualTo(BriefingComposer.ALL_QUIET)
+        assertThat(briefing.urgentSpoken).isEmpty()
+    }
+
+    @Test
+    fun `urgent line names only the pressing items`() {
+        val soon = assignment.copy(dueMs = at(nowLocal.plusHours(10)))
+        val briefing = compose(BriefingInput(deadlines = listOf(soon, quiz)))
+        assertThat(briefing.urgentSpoken).isEqualTo("Master, quickly! Assignment 2 for CS3042 is due today at 18:00.")
+    }
+
+    @Test
+    fun `an empty day is all quiet`() {
+        assertThat(compose(BriefingInput()).spoken).isEqualTo(BriefingComposer.ALL_QUIET)
     }
 
     @Test

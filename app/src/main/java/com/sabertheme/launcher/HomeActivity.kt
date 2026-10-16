@@ -1,6 +1,11 @@
 package com.sabertheme.launcher
 
+import com.sabertheme.core.briefing.BriefingBridge
+import com.sabertheme.core.briefing.BriefingStore
+import com.sabertheme.core.briefing.SaberVoice
+import com.sabertheme.core.briefing.SpeakGuard
 import com.sabertheme.core.data.ScreenLock
+import com.sabertheme.feature.mascot.CloudKind
 import com.sabertheme.core.widgetdata.WidgetState
 import com.sabertheme.feature.mascot.Outfit
 import com.sabertheme.core.widgetdata.ChatNotifications
@@ -24,11 +29,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import com.sabertheme.core.designsystem.glass.BackdropLoader
 import com.sabertheme.core.designsystem.glass.GlassEffectsController
 import com.sabertheme.core.designsystem.glass.LocalGlassEnvironment
@@ -54,6 +62,10 @@ import com.sabertheme.launcher.debug.GlassLab
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import java.time.LocalTime
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -70,6 +82,12 @@ class HomeActivity : ComponentActivity() {
     private val recordingCallback = Consumer<Int> { screenRecorded.value = it == WindowManager.SCREEN_RECORDING_STATE_VISIBLE }
 
     @Inject lateinit var widgets: WidgetSources
+    @Inject lateinit var briefingStore: BriefingStore
+    @Inject lateinit var briefingBridge: BriefingBridge
+    @Inject lateinit var voice: SaberVoice
+
+    /** Briefing rows flicked away this session; they come back with the next Home start. */
+    private val hiddenBriefing = MutableStateFlow(emptySet<String>())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -89,23 +107,55 @@ class HomeActivity : ComponentActivity() {
             // The mascot dances while anything plays (needs the Media widget's listener access).
             val media by widgets.media.state.collectAsStateWithLifecycle(WidgetState.Loading)
             val musicPlaying = (media as? WidgetState.Ready)?.data?.let { m -> m.now?.playing == true || m.apps.any { it.playing } } == true
+            val playingNow = rememberUpdatedState(musicPlaying)
             // ...and stands guard with a glowing sword while charging.
             val battery by widgets.battery.state.collectAsStateWithLifecycle(WidgetState.Loading)
             val charging = (battery as? WidgetState.Ready)?.data?.charging == true
             // ...and keeps unread WhatsApp chats in a cloud beside her (never while the screen is recorded).
             val chats by ChatNotifications.messages.collectAsStateWithLifecycle()
             val recorded by screenRecorded.collectAsStateWithLifecycle()
-            val cloudMessages = remember(chats, settings.mascotMessageCloud, recorded) {
-                if (!settings.mascotMessageCloud || recorded) {
-                    emptyList()
-                } else {
-                    chats.map { m ->
+            // ...and her briefing (deadlines, mail, calls, events) after the chats.
+            val briefing by briefingStore.briefing.collectAsStateWithLifecycle(null)
+            val hidden by hiddenBriefing.collectAsStateWithLifecycle()
+            val speaking by voice.speaking.collectAsStateWithLifecycle()
+            val cloudMessages = remember(chats, settings.mascotMessageCloud, settings.briefing, briefing, hidden, recorded) {
+                if (recorded) return@remember emptyList()
+                val chatRows = if (!settings.mascotMessageCloud) emptyList() else chats.map { m ->
+                    CloudMessage(
+                        m.chat, m.sender, m.text, m.count,
+                        open = { m.openChat(this@HomeActivity) },
+                        dismiss = { ChatNotifications.dismiss(listOf(m.key)) },
+                    )
+                }
+                val briefingRows = if (!settings.briefing) emptyList() else briefing?.items.orEmpty()
+                    .filter { it.key !in hidden }
+                    .map { item ->
                         CloudMessage(
-                            m.chat, m.sender, m.text, m.count,
-                            open = { m.openChat(this@HomeActivity) },
-                            dismiss = { ChatNotifications.dismiss(listOf(m.key)) },
+                            item.title, null, item.detail, 1,
+                            open = { openBriefingItem(item) },
+                            dismiss = { hiddenBriefing.update { it + item.key } },
+                            kind = CloudKind.Briefing,
                         )
                     }
+                chatRows + briefingRows
+            }
+            // Pressing news, said unasked once per item, only when it can't startle anyone.
+            LaunchedEffect(briefing?.builtAtMs, settings.briefing, settings.briefingSpeakUrgent) {
+                val b = briefing ?: return@LaunchedEffect
+                if (!settings.briefing || !settings.briefingSpeakUrgent || b.urgentKeys.isEmpty()) return@LaunchedEffect
+                // Waits for Home to be in front; one try per new briefing.
+                this@HomeActivity.lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
+                val may = SpeakGuard.mayAnnounce(
+                    hour = LocalTime.now().hour,
+                    ringerNormal = ringerNormal(),
+                    interruptionsAll = interruptionsAll(),
+                    musicPlaying = playingNow.value,
+                    screenRecorded = screenRecorded.value,
+                    homeVisible = true,
+                )
+                if (may) {
+                    briefingStore.markSpoken(b.urgentKeys)
+                    voice.speak(b.urgentSpoken)
                 }
             }
 
@@ -148,7 +198,13 @@ class HomeActivity : ComponentActivity() {
                                 companion = { anchor, alpha ->
                                     // Her surface draws above every view: hide her under app-level sheets.
                                     if (settings.mascotEnabled && !lockPrompt && !widgetPickerOpen) {
-                                        MascotLayer(anchor, outfit = Outfit.valueOf(settings.mascotOutfit.name), musicPlaying = { musicPlaying }, charging = { charging }, alpha = alpha, messages = { cloudMessages }, pillEnabled = { settings.mascotPill })
+                                        MascotLayer(anchor, outfit = Outfit.valueOf(settings.mascotOutfit.name), musicPlaying = { musicPlaying }, charging = { charging }, alpha = alpha, messages = { cloudMessages }, pillEnabled = { settings.mascotPill },
+                                            speaking = { speaking },
+                                            onCloudOpened = {
+                                                val b = briefing
+                                                if (settings.briefing && b != null && cloudMessages.any { it.kind == CloudKind.Briefing }) voice.speak(b.spoken)
+                                            },
+                                        )
                                     }
                                 },
                             )
@@ -186,6 +242,7 @@ class HomeActivity : ComponentActivity() {
     }
 
     override fun onStop() {
+        voice.release()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
             windowManager.removeScreenRecordingCallback(recordingCallback)
         }
@@ -201,5 +258,10 @@ class HomeActivity : ComponentActivity() {
         super.onResume()
         // Permission or notification-access changes made in Settings.
         widgets.permissions.recheck()
+        lifecycleScope.launch {
+            if (viewModel.settings.first { it != null }?.briefing == true) {
+                briefingBridge.refreshIfStale(briefingStore.briefing.first()?.builtAtMs)
+            }
+        }
     }
 }
