@@ -26,6 +26,7 @@ include(
     ":core:icons",
     ":core:ui",
     ":core:widgetdata",
+    ":core:briefing",
     ":feature:drawer",
     ":feature:home",
     ":feature:mascot",
