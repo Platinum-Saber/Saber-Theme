@@ -3,7 +3,7 @@
 Saber is a home-screen launcher. It runs all the time, sees what's on Home,
 and holds some sensitive permissions: notification listener, accessibility
 (lock only), contacts, calendar, call log, coarse location and media. This file covers
-what it protects, how, and how to re-check it. Audit: 2026-10-10.
+what it protects, how, and how to re-check it. Audit: 2026-10-16 (1.1.1).
 
 ## What could go wrong
 - **Data leaving the phone** through backups, phone-to-phone transfer, the
@@ -68,5 +68,11 @@ Each command is run from the repo root, piped through the trim hook as in
 - The weather API learns a ~1 km location. It's needed for the forecast.
 - Moodle sees when the phone asks for deadlines (hourly while the briefing is on), as the official Moodle app would.
 - The briefing speaks names and subjects aloud when the cloud is tapped, to whoever is nearby; unasked speech is limited by `SpeakGuard`.
+- Mail text reaches the on-device model, so a crafted mail can steer its
+  reply. The label must be one of the fixed `MailLabel` names; only a
+  delivery's item, status and ETA are free text, and Saber may say them
+  aloud (they are not length-capped yet).
+- `ModelFiles` still loads an adb-pushed copy from `Android/data` without
+  the SHA-256 check. Only adb (shell) can write there on Android 11+.
 - `SelectedPhotoAccess` lint warning: with limited photo access, VLC artwork
   can't be found (accepted earlier; it only affects thumbnails).

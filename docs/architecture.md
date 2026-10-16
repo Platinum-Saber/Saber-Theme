@@ -156,6 +156,10 @@ The main technical risk; constraints live in `.claude/rules/glass-rendering.md`.
      Step 4 (live widgets on page 1, 12 swipes): jank 1.09%, p50 6 ms /
      p90 8 ms / p99 15 ms, GPU p90 4 ms. Reported, not tuned: perf work
      was closed for M2.
+     Release 1.1.1 (briefing on, models downloaded, 12 swipes x3): jank
+     1.2–1.4%, p50 5 ms / p90 6–7 ms / p99 8–10 ms, GPU 3 ms. Idle Home
+     window: 0 frames (only her surface draws). `:brain` idles at ~77 MB
+     RSS with no model loaded; Home ~184 MB.
    - The `benchmark` build is profileable and not obfuscated
      (`app/src/benchmark`, `benchmark-rules.pro`) for `simpleperf --app`.
 6. Glance cannot blur: `GlanceTokens` map the glass tokens to a translucent

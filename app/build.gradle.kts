@@ -18,8 +18,8 @@ android {
     defaultConfig {
         applicationId = "com.sabertheme.launcher"
         // major * 10000 + minor * 100 + patch
-        versionCode = 10001
-        versionName = "1.0.1"
+        versionCode = 10101
+        versionName = "1.1.1"
         // The S23 (and every phone Saber targets) is arm64; the voice and model AARs ship four ABIs.
         ndk { abiFilters += "arm64-v8a" }
     }

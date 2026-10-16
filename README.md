@@ -41,7 +41,7 @@ A glass thought cloud with a red dot appears beside her while WhatsApp chats are
 Every panel is liquid glass: it samples a blurred copy of the wallpaper, refracts at the edges, and has a rim lit by the phone's tilt, which also moves the wallpaper.
 
 ## Install
-Download `Saber-1.0.1.apk` from [Releases](https://github.com/Platinum-Saber/Saber-Theme/releases), install it, then choose Saber as the default home app. `Saber-Icons-1.0.1.apk` is the matching icon pack for other launchers and One UI (see below).
+Download `Saber-1.1.1.apk` from [Releases](https://github.com/Platinum-Saber/Saber-Theme/releases), install it, then choose Saber as the default home app. `Saber-Icons-1.1.1.apk` is the matching icon pack for other launchers and One UI (see below).
 
 ### Theme the rest of One UI
 Recent apps belong to One UI Home, not to Saber, so Saber can't restyle them directly. To bring the Saber glyphs there too (and to Settings, notifications and the share sheet):

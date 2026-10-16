@@ -16,8 +16,8 @@ android {
     defaultConfig {
         applicationId = "com.sabertheme.iconpack"
         // Released with the launcher: major * 10000 + minor * 100 + patch
-        versionCode = 10001
-        versionName = "1.0.1"
+        versionCode = 10101
+        versionName = "1.1.1"
     }
     signingConfigs {
         if (keystoreProps != null) {
