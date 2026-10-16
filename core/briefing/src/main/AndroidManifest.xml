@@ -4,4 +4,11 @@
     <!-- Briefing: missed calls Saber mentions. Asked from Settings → Briefing, never at startup. -->
     <uses-permission android:name="android.permission.READ_CALL_LOG" />
 
+    <application>
+        <!-- Mail labeller: LiteRT-LM's GPU backend needs the vendor OpenCL libraries;
+             optional so the app still installs where they are missing (rules label then). -->
+        <uses-native-library android:name="libOpenCL.so" android:required="false" />
+        <uses-native-library android:name="libvndksupport.so" android:required="false" />
+    </application>
+
 </manifest>
