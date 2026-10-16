@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  HTTPS only, system CAs only (the weather API is the only network use).
+  HTTPS only, system CAs only (network use: the weather API and, with the
+  briefing on, the owner's Moodle site).
   Spelled out so a dependency's manifest can't quietly allow cleartext or
   user-installed CAs.
 -->

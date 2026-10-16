@@ -34,13 +34,20 @@ paths:
     `SecurityException`).
   - `:core:widgetdata`: `READ_MEDIA_VIDEO` (Media widget thumbnails for
     VLC; asked by tapping the artwork badge, needs "Allow all").
+  - `:core:briefing`: `READ_CALL_LOG` (missed calls in the briefing; asked
+    from Settings -> Briefing), `MODIFY_AUDIO_SETTINGS` (normal; the reverb
+    on her voice is an output-mix effect). It also declares
+    `RemoteWorkerService` in `:brain` (not exported) and optional
+    `libOpenCL.so` / `libvndksupport.so` for the GPU language model.
   Runtime permissions are only requested from a visible "Allow" control,
   never at startup.
 - `MediaListenerService` (`:core:widgetdata`) is a `NotificationListenerService`;
   being enabled is what lets `MediaSessionManager` return sessions. Keep it
   `exported="true"` with `BIND_NOTIFICATION_LISTENER_SERVICE`. It reads
-  WhatsApp notifications only (`ChatNotifications`, for the mascot's message
-  cloud); reading any other app's needs a product decision.
+  WhatsApp notifications (`ChatNotifications`, for the mascot's message
+  cloud) and Gmail notifications (`GmailNotifications`, for the briefing;
+  owner's decision 2026-10-16); reading any other app's needs a product
+  decision.
   The Media widget's resume (`MediaResumer`) binds other apps'
   `MediaBrowserService`s and sends them `MEDIA_BUTTON`; `:core:widgetdata`
   declares `<queries>` for both intents (no `QUERY_ALL_PACKAGES`).
