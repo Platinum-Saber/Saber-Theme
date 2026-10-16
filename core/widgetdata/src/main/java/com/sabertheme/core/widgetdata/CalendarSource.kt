@@ -69,7 +69,7 @@ internal object CalendarMapper {
 @Singleton
 class CalendarSource @Inject constructor(
     @ApplicationContext private val context: Context,
-    permissions: WidgetPermissions,
+    private val permissions: WidgetPermissions,
     scope: WidgetScope,
 ) : WidgetDataSource<CalendarData> {
 
@@ -98,15 +98,34 @@ class CalendarSource @Inject constructor(
         }
     }
 
-    private suspend fun query(): CalendarData = withContext(Dispatchers.IO) {
+    private suspend fun query(): CalendarData {
         val zone = ZoneId.systemDefault()
         val now = LocalDateTime.now(zone)
         val nowMs = System.currentTimeMillis()
+        val rows = rows(nowMs - TimeUnit.DAYS.toMillis(1), nowMs + TimeUnit.DAYS.toMillis(7))
+        return CalendarData(now, CalendarMapper.toEvents(rows, zone, now, limit = 8))
+    }
+
+    /**
+     * One read for the briefing worker: events not yet over that start within
+     * [hours]; empty without `READ_CALENDAR`.
+     */
+    suspend fun upcoming(hours: Long = 24, limit: Int = 8): List<CalendarEvent> {
+        if (!permissions.granted(WidgetPermission.Calendar)) return emptyList()
+        val zone = ZoneId.systemDefault()
+        val now = LocalDateTime.now(zone)
+        val nowMs = System.currentTimeMillis()
+        val horizon = now.plusHours(hours)
+        return CalendarMapper.toEvents(rows(nowMs - TimeUnit.DAYS.toMillis(1), nowMs + TimeUnit.HOURS.toMillis(hours)), zone, now, limit)
+            .filter { it.start.isBefore(horizon) }
+    }
+
+    private suspend fun rows(fromMs: Long, toMs: Long): List<CalendarRow> = withContext(Dispatchers.IO) {
         val uri = Instances.CONTENT_URI.buildUpon().also {
-            ContentUris.appendId(it, nowMs - TimeUnit.DAYS.toMillis(1))
-            ContentUris.appendId(it, nowMs + TimeUnit.DAYS.toMillis(7))
+            ContentUris.appendId(it, fromMs)
+            ContentUris.appendId(it, toMs)
         }.build()
-        val rows = buildList {
+        buildList {
             context.contentResolver.query(
                 uri,
                 arrayOf(Instances.EVENT_ID, Instances.TITLE, Instances.BEGIN, Instances.END, Instances.ALL_DAY, Instances.DISPLAY_COLOR),
@@ -119,6 +138,5 @@ class CalendarSource @Inject constructor(
                 }
             }
         }
-        CalendarData(now, CalendarMapper.toEvents(rows, zone, now, limit = 8))
     }
 }
