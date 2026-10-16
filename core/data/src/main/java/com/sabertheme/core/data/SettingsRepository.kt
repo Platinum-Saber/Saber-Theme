@@ -33,6 +33,8 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
                 mascotOutfit = MascotOutfit.entries.firstOrNull { it.name == prefs[MASCOT_OUTFIT] } ?: MascotOutfit.Armor,
                 mascotMessageCloud = prefs[MASCOT_MESSAGES] ?: true,
                 mascotPill = prefs[MASCOT_PILL] ?: true,
+                briefing = prefs[BRIEFING] ?: false,
+                briefingSpeakUrgent = prefs[BRIEFING_SPEAK] ?: true,
                 doubleTapLock = prefs[DOUBLE_TAP_LOCK] ?: true,
             )
         }
@@ -78,6 +80,14 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
         store.edit { it[MASCOT_MESSAGES] = enabled }
     }
 
+    suspend fun setBriefing(enabled: Boolean) {
+        store.edit { it[BRIEFING] = enabled }
+    }
+
+    suspend fun setBriefingSpeakUrgent(enabled: Boolean) {
+        store.edit { it[BRIEFING_SPEAK] = enabled }
+    }
+
     suspend fun setDoubleTapLock(enabled: Boolean) {
         store.edit { it[DOUBLE_TAP_LOCK] = enabled }
     }
@@ -94,6 +104,8 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
         val MASCOT_MESSAGES = booleanPreferencesKey("mascot_messages")
         val MASCOT_PILL = booleanPreferencesKey("mascot_pill")
         val DOUBLE_TAP_LOCK = booleanPreferencesKey("double_tap_lock")
+        val BRIEFING = booleanPreferencesKey("briefing")
+        val BRIEFING_SPEAK = booleanPreferencesKey("briefing_speak_urgent")
 
         fun decodeIconStyle(value: String?): IconStyle = IconStyle.entries.firstOrNull { it.name == value } ?: IconStyle.Tile
 

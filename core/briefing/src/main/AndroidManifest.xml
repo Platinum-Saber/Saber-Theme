@@ -9,6 +9,13 @@
              optional so the app still installs where they are missing (rules label then). -->
         <uses-native-library android:name="libOpenCL.so" android:required="false" />
         <uses-native-library android:name="libvndksupport.so" android:required="false" />
+
+        <!-- Briefing runs (BriefingWorker) execute here, in their own process, so the
+             2 GB model never lives in Home's process. Only WorkManager binds it. -->
+        <service
+            android:name="androidx.work.multiprocess.RemoteWorkerService"
+            android:exported="false"
+            android:process=":brain" />
     </application>
 
 </manifest>

@@ -56,6 +56,7 @@ dependencies {
     implementation(projects.core.icons)
     implementation(projects.core.ui)
     implementation(projects.core.widgetdata)
+    implementation(projects.core.briefing)
     implementation(projects.feature.drawer)
     implementation(projects.feature.home)
     implementation(projects.feature.mascot)
@@ -67,4 +68,5 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.metrics.performance)
+    implementation(libs.androidx.work.runtime.ktx)
 }

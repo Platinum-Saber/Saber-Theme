@@ -39,6 +39,10 @@ data class GlassSettings(
     val mascotMessageCloud: Boolean = true,
     /** The glass pill around the camera that she slashes when it is dropped on Home. */
     val mascotPill: Boolean = true,
+    /** Saber's briefing: deadlines, mail, calls and events in her cloud (off until the owner opts in). */
+    val briefing: Boolean = false,
+    /** She says new urgent briefing items aloud, within quiet hours, ringer and DND guards. */
+    val briefingSpeakUrgent: Boolean = true,
     /** Double-tap empty Home space locks the phone (needs the accessibility service). */
     val doubleTapLock: Boolean = true,
 ) {
