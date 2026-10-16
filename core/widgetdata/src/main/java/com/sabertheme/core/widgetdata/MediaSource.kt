@@ -26,18 +26,21 @@ import javax.inject.Singleton
 
 /**
  * Being enabled is what grants media-session access. It also reads WhatsApp
- * notifications (and no others) into [ChatNotifications] for the mascot's
- * message cloud.
+ * notifications into [ChatNotifications] for the mascot's message cloud and
+ * Gmail notifications into [GmailNotifications] (and no others).
  */
 class MediaListenerService : NotificationListenerService() {
     override fun onListenerConnected() {
         ChatNotifications.canceller = ::cancelChats
-        ChatNotifications.reset(runCatching { activeNotifications.toList() }.getOrNull().orEmpty())
+        val active = runCatching { activeNotifications.toList() }.getOrNull().orEmpty()
+        ChatNotifications.reset(active)
+        GmailNotifications.reset(active)
     }
 
     override fun onListenerDisconnected() {
         ChatNotifications.canceller = null
         ChatNotifications.reset(emptyList())
+        GmailNotifications.reset(emptyList())
     }
 
     /** Cancels [keys], then the app's group summary once no chats of it are left. */
@@ -54,11 +57,15 @@ class MediaListenerService : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
-        sbn?.let(ChatNotifications::post)
+        sbn ?: return
+        ChatNotifications.post(sbn)
+        GmailNotifications.post(sbn)
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
-        sbn?.let { ChatNotifications.remove(it.key) }
+        sbn ?: return
+        ChatNotifications.remove(sbn.key)
+        GmailNotifications.remove(sbn.key)
     }
 }
 
