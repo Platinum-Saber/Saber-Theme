@@ -58,7 +58,7 @@ class ModelDownloadWorker(context: Context, params: WorkerParameters) : Coroutin
         val part = files.part(pack)
         files.root.mkdirs()
         val needed = pack.bytes - part.length().coerceAtMost(pack.bytes) + pack.unpackedBytes + MARGIN
-        if (StatFs(files.root.path).availableBytes < needed) return failed("Needs ${gb(needed)} GB free")
+        if (StatFs(files.root.path).availableBytes < needed) return failed("Needs ${sizeLabel(needed)} free")
 
         val downloader = ModelDownloader()
         return try {
@@ -120,7 +120,7 @@ class ModelDownloadWorker(context: Context, params: WorkerParameters) : Coroutin
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL)
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setContentTitle("Downloading ${pack.title}")
-            .setContentText("${gb(done)} of ${gb(pack.bytes)} GB")
+            .setContentText("${sizeLabel(done)} of ${sizeLabel(pack.bytes)}")
             .setProgress(PERCENT, (done * PERCENT / pack.bytes).toInt(), false)
             .setOngoing(true)
             .setSilent(true)
@@ -159,8 +159,9 @@ val ModelPack.title: String get() = when (this) {
     ModelPack.Kokoro -> "Saber's voice"
 }
 
-/** Bytes as GB with one decimal, the way Settings shows sizes. */
-fun gb(bytes: Long): String = String.format(Locale.ROOT, "%.1f", bytes / 1e9)
+/** "2.6 GB" or "132 MB", the way Settings shows sizes. */
+fun sizeLabel(bytes: Long): String =
+    if (bytes >= 1_000_000_000) String.format(Locale.ROOT, "%.1f GB", bytes / 1e9) else "${bytes / 1_000_000} MB"
 
 /** Starts, cancels, deletes and watches model downloads (main process). */
 object ModelDownloads {

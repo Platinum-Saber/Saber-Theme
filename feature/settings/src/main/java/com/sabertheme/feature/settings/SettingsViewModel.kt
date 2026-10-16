@@ -1,18 +1,21 @@
 package com.sabertheme.feature.settings
 
 import com.sabertheme.core.model.PhotoFraming
+import android.content.Context
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sabertheme.core.briefing.BriefingBridge
 import com.sabertheme.core.briefing.BriefingClips
-import com.sabertheme.core.briefing.SageVoiceEngine
 import com.sabertheme.core.briefing.BriefingStore
 import com.sabertheme.core.briefing.Course
 import com.sabertheme.core.briefing.SaberVoice
 import com.sabertheme.core.briefing.CallLogSource
-import com.sabertheme.core.briefing.MailLabeler
+import com.sabertheme.core.briefing.ModelDownloads
+import com.sabertheme.core.briefing.ModelFiles
+import com.sabertheme.core.briefing.ModelPack
+import com.sabertheme.core.briefing.ModelState
 import com.sabertheme.core.briefing.MoodleAccount
 import com.sabertheme.core.briefing.MoodleClient
 import com.sabertheme.core.briefing.MoodleException
@@ -24,28 +27,30 @@ import com.sabertheme.core.model.IconStyle
 import com.sabertheme.core.model.MascotOutfit
 import com.sabertheme.core.model.WallpaperChoice
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val settingsRepository: SettingsRepository,
     private val wallpaperStore: WallpaperStore,
     private val moodleClient: MoodleClient,
     secrets: SecretsStore,
-    private val labeler: MailLabeler,
+    private val modelFiles: ModelFiles,
     private val callLog: CallLogSource,
     private val briefing: BriefingBridge,
     private val briefingStore: BriefingStore,
     private val voice: SaberVoice,
     private val clips: BriefingClips,
-    private val sage: SageVoiceEngine,
 ) : ViewModel() {
 
     val settings: StateFlow<GlassSettings> =
@@ -191,17 +196,27 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { moodleClient.disconnect() }
     }
 
-    /** The model file's size in bytes, or null when it isn't on the phone yet. */
-    fun modelSize(): Long? = labeler.modelFile.takeIf { it.isFile }?.length()
-
-    val modelPath: String get() = labeler.modelFile.path
-
     fun callLogGranted(): Boolean = callLog.granted()
 
-    /** The neural voice's files are on the phone; until then Samsung TTS speaks. */
-    fun neuralVoiceReady(): Boolean = sage.available
+    /** Gemma (labels mail) and Kokoro (her voice): on the phone, downloading, or missing. */
+    val models: Map<ModelPack, StateFlow<ModelState>> = ModelPack.entries.associateWith { pack ->
+        var last: ModelState? = null
+        ModelDownloads.state(context, pack, modelFiles)
+            .onEach { state ->
+                // Just downloaded: brief again so the model is used now, not at the next hourly run.
+                if (state is ModelState.Ready && last != null && last !is ModelState.Ready) briefing.refreshNow()
+                last = state
+            }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, ModelState.Missing(0))
+    }
 
-    val voicePath: String get() = sage.modelDir.path
+    fun downloadModel(pack: ModelPack, anyNetwork: Boolean = false) = ModelDownloads.start(context, pack, anyNetwork)
+
+    fun cancelDownload(pack: ModelPack) = ModelDownloads.cancel(context, pack)
+
+    fun deleteModel(pack: ModelPack) {
+        viewModelScope.launch { ModelDownloads.delete(context, pack, modelFiles) }
+    }
 
     /** Module code → name from Moodle, shown so the owner can see what she will say. */
     val courses: StateFlow<List<Course>> = briefingStore.courses.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())

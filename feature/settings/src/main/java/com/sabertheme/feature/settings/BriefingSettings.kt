@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -39,10 +40,12 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sabertheme.core.briefing.ModelPack
+import com.sabertheme.core.briefing.ModelState
+import com.sabertheme.core.briefing.sizeLabel
 import com.sabertheme.core.designsystem.component.GlassSwitch
 import com.sabertheme.core.designsystem.theme.Saber
 import com.sabertheme.core.model.GlassSettings
-import java.util.Locale
 
 /** Where Moodle sign-in stands; errors are Moodle's own words. */
 sealed interface MoodleStatus {
@@ -67,16 +70,14 @@ internal fun BriefingRows(visible: Boolean, settings: GlassSettings, viewModel: 
     // Re-read grants on every resume: the user changes them in Android settings.
     val resumed by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsStateWithLifecycle()
     Divider()
-    val neural = remember(visible, resumed) { viewModel.neuralVoiceReady() }
-    SettingRow(
+    ModelRow(
         "Voice",
-        if (neural) {
-            "Emma (Kokoro, on this phone) · calm, like a sage reporting; tap to hear"
-        } else {
-            "Phone voice for now. For Emma, copy the Kokoro pack to ${viewModel.voicePath}"
-        },
+        ModelPack.Kokoro,
+        viewModel,
+        ready = "Emma (Kokoro, on this phone) · calm, like a sage reporting; tap to hear",
+        missing = "Phone voice until then; tap to hear",
         onClick = viewModel::previewVoice,
-    ) { Value("Play") }
+    )
     Divider()
     SettingRow("Speak urgent items", "Never 22:00–07:00, on silent, in Do Not Disturb or over music") {
         GlassSwitch(settings.briefingSpeakUrgent, viewModel::setBriefingSpeakUrgent)
@@ -93,15 +94,83 @@ internal fun BriefingRows(visible: Boolean, settings: GlassSettings, viewModel: 
         onClick = if (listening) null else ({ context.openListenerSettings() }),
     ) { Value(if (listening) "On" else "Allow") }
     Divider()
-    val size = remember(visible, resumed) { viewModel.modelSize() }
-    SettingRow(
+    ModelRow(
         "On-device model",
-        if (size != null) {
-            "Gemma 4 E2B · ${String.format(Locale.ROOT, "%.1f", size / 1e9)} GB · labels mail on the phone"
-        } else {
-            "Missing: copy gemma-4-E2B-it.litertlm to ${viewModel.modelPath.substringBeforeLast('/')}. Simple rules label mail until then."
-        },
-    ) { Value(if (size != null) "Ready" else "Rules") }
+        ModelPack.Gemma,
+        viewModel,
+        ready = "Gemma 4 E2B · labels mail on the phone",
+        missing = "Simple rules label mail until then",
+    )
+}
+
+/**
+ * A briefing model: Download (Wi-Fi only unless the owner taps through),
+ * progress with Cancel, then Delete behind a second tap. A cancelled or
+ * dropped download resumes where it stopped.
+ */
+@Composable
+private fun ModelRow(
+    label: String,
+    pack: ModelPack,
+    viewModel: SettingsViewModel,
+    ready: String,
+    missing: String,
+    onClick: (() -> Unit)? = null,
+) {
+    val state by viewModel.models.getValue(pack).collectAsStateWithLifecycle()
+    var confirmDelete by remember(state) { mutableStateOf(false) }
+    val total = sizeLabel(pack.bytes)
+    when (val s = state) {
+        is ModelState.Ready -> SettingRow(label, "$ready · ${sizeLabel(s.bytes)}", onClick) {
+            Action(if (confirmDelete) "Delete?" else "Delete") {
+                if (confirmDelete) viewModel.deleteModel(pack) else confirmDelete = true
+            }
+        }
+        is ModelState.Missing -> SettingRow(
+            label,
+            if (s.partBytes > 0) "${sizeLabel(s.partBytes)} of $total downloaded. $missing" else "$total download, on Wi-Fi. $missing",
+            onClick,
+        ) { Action(if (s.partBytes > 0) "Resume" else "Download") { viewModel.downloadModel(pack) } }
+        is ModelState.Waiting -> SettingRow(
+            label,
+            if (s.wifiOnly) "Waiting for Wi-Fi · tap to use mobile data ($total)" else "Waiting for the network",
+            if (s.wifiOnly) ({ viewModel.downloadModel(pack, anyNetwork = true) }) else null,
+        ) { Action("Cancel") { viewModel.cancelDownload(pack) } }
+        is ModelState.Downloading -> Column {
+            SettingRow(label, "Downloading · ${sizeLabel(s.done)} of $total") {
+                Action("Cancel") { viewModel.cancelDownload(pack) }
+            }
+            Progress(s.done.toFloat() / s.total)
+        }
+        ModelState.Verifying -> SettingRow(label, "Checking the download…") {}
+        ModelState.Unpacking -> SettingRow(label, "Unpacking…") {}
+        is ModelState.Failed -> SettingRow(label, "${s.message}. $missing", onClick) {
+            Action("Retry") { viewModel.downloadModel(pack) }
+        }
+    }
+}
+
+@Composable
+private fun Action(text: String, onClick: () -> Unit) {
+    BasicText(
+        text,
+        Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 4.dp),
+        style = Saber.type.body.copy(color = Saber.colors.accent),
+    )
+}
+
+@Composable
+private fun Progress(fraction: Float) {
+    Box(
+        Modifier
+            .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+            .fillMaxWidth()
+            .height(3.dp)
+            .clip(RoundedCornerShape(2.dp))
+            .background(Saber.colors.textPrimary.copy(alpha = 0.1f)),
+    ) {
+        Box(Modifier.fillMaxWidth(fraction.coerceIn(0f, 1f)).height(3.dp).background(Saber.colors.accent))
+    }
 }
 
 @Composable
