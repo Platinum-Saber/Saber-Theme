@@ -21,16 +21,31 @@ class BriefingComposerTest {
     private fun compose(input: BriefingInput, spoken: Set<String> = emptySet()) =
         BriefingComposer.compose(input, now, zone, spoken)
 
-    private val assignment = Deadline("d1", "CS3042", "Assignment 2", at(nowLocal.plusDays(1).withHour(23).withMinute(59)), "https://moodle/a2")
-    private val quiz = Deadline("d2", "CS3051", "Quiz 4", at(nowLocal.plusDays(3).withHour(18)), null)
-    private val report = Deadline("d3", "CS3010", "Design report", at(nowLocal.plusDays(11).withHour(12)), null)
+    private val assignment = Deadline("d1", "Mobile Computing", "Assignment 2", at(nowLocal.plusDays(1).withHour(23).withMinute(59)), "https://moodle/a2", "CS3042")
+    private val quiz = Deadline("d2", "Machine Learning", "Quiz 4", at(nowLocal.plusDays(2).withHour(18)), null, "CS3051")
+    private val report = Deadline("d3", "Software Architecture", "Design report", at(nowLocal.plusDays(11).withHour(12)), null, "CS3010")
 
     @Test
-    fun `deadline under a day is Now, within three days Soon, later Later`() {
+    fun `deadline under a day is Now, within three days Soon`() {
         val soon = assignment.copy(dueMs = at(nowLocal.plusHours(20)))
-        val items = compose(BriefingInput(deadlines = listOf(report, quiz, soon))).items
-        assertThat(items.map { it.urgency }).containsExactly(Urgency.Now, Urgency.Soon, Urgency.Later).inOrder()
-        assertThat(items.first().detail).isEqualTo("Due tomorrow at 04:00")
+        val items = compose(BriefingInput(deadlines = listOf(quiz, soon))).items
+        assertThat(items.map { it.urgency }).containsExactly(Urgency.Now, Urgency.Soon).inOrder()
+        assertThat(items.first().detail).isEqualTo("Due tomorrow at 04:00 · CS3042")
+    }
+
+    @Test
+    fun `deadlines more than three days out are left off`() {
+        val justIn = report.copy(dueMs = at(nowLocal.plusHours(71)))
+        val justOut = report.copy(key = "d4", dueMs = at(nowLocal.plusHours(73)))
+        assertThat(compose(BriefingInput(deadlines = listOf(report, justOut, justIn))).items.map { it.key }).containsExactly("d3")
+    }
+
+    @Test
+    fun `she says the module name, never its code`() {
+        val briefing = compose(BriefingInput(deadlines = listOf(assignment, quiz)))
+        assertThat(briefing.spoken).contains("Assignment 2 for Mobile Computing is due tomorrow at 11:59 PM.")
+        assertThat(briefing.spoken).doesNotContain("CS3042")
+        assertThat(briefing.items.first().title).isEqualTo("Mobile Computing · Assignment 2")
     }
 
     @Test
@@ -40,9 +55,16 @@ class BriefingComposerTest {
     }
 
     @Test
-    fun `deadline text names the weekday within a week, the date beyond`() {
-        val items = compose(BriefingInput(deadlines = listOf(quiz, report))).items
-        assertThat(items.map { it.detail }).containsExactly("Due on Monday", "Due on 27 Oct").inOrder()
+    fun `deadline text names the weekday after tomorrow`() {
+        val items = compose(BriefingInput(deadlines = listOf(quiz))).items
+        assertThat(items.single().detail).isEqualTo("Due on Sunday at 18:00 · CS3051")
+    }
+
+    @Test
+    fun `a deadline within six hours is counted down in hours`() {
+        val close = assignment.copy(dueMs = at(nowLocal.plusHours(5)))
+        assertThat(compose(BriefingInput(deadlines = listOf(close))).urgentSpoken)
+            .isEqualTo("Warning. Assignment 2 for Mobile Computing is due in 5 hours.")
     }
 
     @Test
@@ -109,8 +131,10 @@ class BriefingComposerTest {
             events = listOf(Event("e1", "Mobile Computing lecture", at(nowLocal.plusMinutes(90)), false)),
         )
         val spoken = compose(input).spoken
-        assertThat(spoken).contains("Assignment 2 for CS3042 is due today at 23:00.")
-        assertThat(spoken).contains("Amma called twice.")
+        assertThat(spoken).containsMatch("^(Notice|Report)\\. Five matters require your attention, Master\\.")
+        assertThat(spoken).contains("Assignment 2 for Mobile Computing is due today at 11:00 PM.")
+        assertThat(spoken).contains("A missed call from Amma, twice.")
+        assertThat(spoken).endsWith("End of report.")
         assertThat(spoken).contains("TechStart awaits your reply")
         assertThat(spoken.split(' ').count { it.isNotBlank() }).isAtMost(BriefingComposer.MAX_SPOKEN_WORDS)
         assertThat(spoken).doesNotContain("<")
@@ -121,7 +145,7 @@ class BriefingComposerTest {
         val soon = assignment.copy(dueMs = at(nowLocal.plusHours(10)))
         val briefing = compose(BriefingInput(deadlines = listOf(soon)), spoken = setOf("d1"))
         assertThat(briefing.items).hasSize(1)
-        assertThat(briefing.spoken).contains("Assignment 2 for CS3042")
+        assertThat(briefing.spoken).contains("Assignment 2 for Mobile Computing")
         assertThat(briefing.urgentKeys).isEmpty()
         assertThat(briefing.urgentSpoken).isEmpty()
     }
@@ -130,7 +154,7 @@ class BriefingComposerTest {
     fun `urgent line names only the pressing items`() {
         val soon = assignment.copy(dueMs = at(nowLocal.plusHours(10)))
         val briefing = compose(BriefingInput(deadlines = listOf(soon, quiz)))
-        assertThat(briefing.urgentSpoken).isEqualTo("Master, quickly! Assignment 2 for CS3042 is due today at 18:00.")
+        assertThat(briefing.urgentSpoken).isEqualTo("Warning. Assignment 2 for Mobile Computing is due today at 6:00 PM.")
     }
 
     @Test

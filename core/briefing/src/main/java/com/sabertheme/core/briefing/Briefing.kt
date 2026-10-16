@@ -48,8 +48,8 @@ data class BriefingInput(
     val events: List<Event> = emptyList(),
     val calls: List<MissedCall> = emptyList(),
 ) {
-    /** A Moodle action event that still needs a submission. */
-    data class Deadline(val key: String, val course: String, val task: String, val dueMs: Long, val url: String?)
+    /** A Moodle action event that still needs a submission; [course] is the spoken name, [code] e.g. "EN3330". */
+    data class Deadline(val key: String, val course: String, val task: String, val dueMs: Long, val url: String?, val code: String? = null)
 
     data class LabelledMail(val key: String, val sender: String, val subject: String, val label: MailLabel, val atMs: Long)
 

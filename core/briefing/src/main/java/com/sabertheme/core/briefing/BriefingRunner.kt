@@ -31,16 +31,17 @@ class BriefingRunner @Inject constructor(
         val zone = ZoneId.systemDefault()
         val nowMs = now.toEpochMilli()
 
+        refreshCourses(nowMs)
         val deadlines = try {
             moodle.deadlines(nowMs)?.also { fresh ->
-                store.update { s -> s.copy(deadlines = fresh.map { StoredDeadline(it.key, it.course, it.task, it.dueMs, it.url) }) }
+                store.update { s -> s.copy(deadlines = fresh.map { StoredDeadline(it.key, it.course, it.task, it.dueMs, it.url, it.code) }) }
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             Log.w(TAG, "Moodle skipped: ${e.javaClass.simpleName}")
             null
-        } ?: store.snapshot().deadlines.map { BriefingInput.Deadline(it.key, it.course, it.task, it.dueMs, it.url) }
+        } ?: store.snapshot().deadlines.map { BriefingInput.Deadline(it.key, it.course, it.task, it.dueMs, it.url, it.code) }
 
         val events = calendar.upcoming(hours = 24).map {
             BriefingInput.Event("event:${it.id}:${it.start}", it.title, it.start.atZone(zone).toInstant().toEpochMilli(), it.allDay)
@@ -67,6 +68,20 @@ class BriefingRunner @Inject constructor(
                 "(${deadlines.size} deadlines, ${recent.size} mails, ${events.size} events, ${missed.size} calls) " +
                 "in ${SystemClock.elapsedRealtime() - started} ms",
         )
+    }
+
+    /** The module index changes once a term; once a day is plenty. */
+    private suspend fun refreshCourses(nowMs: Long) {
+        val state = store.snapshot()
+        if (state.courses.isNotEmpty() && nowMs - state.coursesAtMs < DAY_MS) return
+        try {
+            val courses = moodle.courses() ?: return
+            store.update { it.copy(courses = courses, coursesAtMs = nowMs) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w(TAG, "Module index skipped: ${e.javaClass.simpleName}")
+        }
     }
 
     /** Labels until the queue is empty, so mail that lands mid-run isn't left for the hourly run. */

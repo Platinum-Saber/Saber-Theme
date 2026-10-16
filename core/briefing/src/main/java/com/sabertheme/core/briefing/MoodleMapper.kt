@@ -35,12 +35,28 @@ internal object MoodleMapper {
             .map { e ->
                 BriefingInput.Deadline(
                     key = "moodle:${e.id}",
-                    course = e.course?.shortname?.takeIf { it.isNotBlank() } ?: e.course?.fullname.orEmpty(),
+                    course = CourseNames.spoken(e.course?.fullname, e.course?.shortname),
                     task = taskName(e.name),
                     dueMs = e.timesort * 1000,
                     url = e.action?.url ?: e.url ?: e.viewurl,
+                    code = CourseNames.code(e.course?.shortname, e.course?.fullname),
                 )
             }
+    }
+
+    /** `core_webservice_get_site_info`: the signed-in user's id. */
+    fun userId(body: String): Long {
+        failure(body)?.let { throw it }
+        return decode<SiteInfo>(body).userid ?: throw MoodleException("badreply", "Moodle gave no user")
+    }
+
+    /** `core_enrol_get_users_courses`: the module index, one row per code. */
+    fun courses(body: String): List<Course> {
+        failure(body)?.let { throw it }
+        return decode<List<CourseReply>>(body).mapNotNull { c ->
+            val code = CourseNames.code(c.shortname, c.fullname) ?: return@mapNotNull null
+            Course(code, CourseNames.spoken(c.fullname, c.shortname))
+        }.distinctBy { it.code }.sortedBy { it.code }
     }
 
     /** "Assignment 2 is due" → "Assignment 2"; Moodle appends what happens on the date. */
@@ -75,14 +91,20 @@ internal object MoodleMapper {
         val id: Long,
         val name: String = "",
         val timesort: Long = 0,
-        val course: Course? = null,
+        val course: EventCourse? = null,
         val action: Action? = null,
         val url: String? = null,
         val viewurl: String? = null,
     )
 
     @Serializable
-    private class Course(val shortname: String? = null, val fullname: String? = null)
+    private class EventCourse(val shortname: String? = null, val fullname: String? = null)
+
+    @Serializable
+    private class SiteInfo(val userid: Long? = null)
+
+    @Serializable
+    private class CourseReply(val shortname: String? = null, val fullname: String? = null)
 
     @Serializable
     private class Action(val actionable: Boolean = false, val url: String? = null)

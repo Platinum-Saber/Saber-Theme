@@ -29,7 +29,8 @@ class MoodleMapperTest {
         val deadlines = MoodleMapper.deadlines(events)
         assertThat(deadlines.map { it.key }).containsExactly("moodle:41", "moodle:42").inOrder()
         val first = deadlines.first()
-        assertThat(first.course).isEqualTo("CS3042")
+        assertThat(first.course).isEqualTo("Mobile Computing")
+        assertThat(first.code).isEqualTo("CS3042")
         assertThat(first.task).isEqualTo("Assignment 2 - Offline-first app")
         assertThat(first.dueMs).isEqualTo(1_792_259_940_000L)
         assertThat(first.url).isEqualTo("https://moodle.example.ac.lk/mod/assign/view.php?id=9")
@@ -41,6 +42,20 @@ class MoodleMapperTest {
         assertThat(quiz.course).isEqualTo("Machine Learning")
         assertThat(quiz.task).isEqualTo("Quiz 4")
         assertThat(quiz.url).isEqualTo("https://moodle.example.ac.lk/calendar/view.php?view=day")
+    }
+
+    @Test
+    fun `enrolled courses become the code to name index`() {
+        val body = """[
+          {"id":1,"shortname":"In22-S7-EN3330 (129934)","fullname":"In22-S7-EN3330 - Robotics and Automation"},
+          {"id":2,"shortname":"In22-S7-CS4373 (129879)","fullname":"CS4373 Cloud Computing"},
+          {"id":3,"shortname":"Eng-CSE","fullname":"Department of Computer Science and Engineering"}
+        ]"""
+        assertThat(MoodleMapper.courses(body)).containsExactly(
+            Course("CS4373", "Cloud Computing"),
+            Course("EN3330", "Robotics and Automation"),
+        ).inOrder()
+        assertThat(MoodleMapper.userId("""{"sitename":"UoM","userid":4242}""")).isEqualTo(4242)
     }
 
     @Test

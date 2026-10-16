@@ -77,6 +77,19 @@ class MoodleClient @Inject constructor(private val secrets: SecretsStore) {
         }
     }
 
+    /** Every module the user is enrolled in, for the code → name index; null when not connected. */
+    suspend fun courses(): List<Course>? {
+        val account = secrets.moodle.first() ?: return null
+        val userId = MoodleMapper.userId(call(account, "core_webservice_get_site_info", emptyMap()))
+        return MoodleMapper.courses(call(account, "core_enrol_get_users_courses", mapOf("userid" to userId.toString())))
+    }
+
+    private suspend fun call(account: MoodleAccount, function: String, args: Map<String, String>): String =
+        post(
+            "${account.site}/webservice/rest/server.php",
+            mapOf("wstoken" to account.token, "wsfunction" to function, "moodlewsrestformat" to "json") + args,
+        )
+
     private suspend fun post(url: String, form: Map<String, String>): String = withContext(Dispatchers.IO) {
         val connection = URL(url).openConnection() as HttpURLConnection
         try {

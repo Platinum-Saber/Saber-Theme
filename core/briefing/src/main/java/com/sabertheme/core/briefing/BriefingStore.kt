@@ -30,10 +30,13 @@ internal data class BriefingState(
     val briefing: Briefing? = null,
     /** Items she has already said aloud, so she doesn't repeat herself. */
     val spoken: List<String> = emptyList(),
+    /** Module code → name, from Moodle; refreshed daily. */
+    val courses: List<Course> = emptyList(),
+    val coursesAtMs: Long = 0,
 )
 
 @Serializable
-internal data class StoredDeadline(val key: String, val course: String, val task: String, val dueMs: Long, val url: String?)
+internal data class StoredDeadline(val key: String, val course: String, val task: String, val dueMs: Long, val url: String?, val code: String? = null)
 
 /**
  * Everything the briefing keeps, shared by Home (adds mail, reads the briefing,
@@ -45,6 +48,9 @@ class BriefingStore @Inject constructor(@ApplicationContext context: Context) {
     private val store = jsonStore(context, "briefing_state", BriefingState.serializer(), BriefingState())
 
     val briefing: Flow<Briefing?> = store.data.map { it.briefing }.distinctUntilChanged()
+
+    /** The module index (code → name), for Settings. */
+    val courses: Flow<List<Course>> = store.data.map { it.courses }.distinctUntilChanged()
 
     /** Adds mails not seen before; returns how many were new. */
     suspend fun enqueue(mails: List<QueuedMail>): Int {

@@ -6,6 +6,9 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sabertheme.core.briefing.BriefingBridge
+import com.sabertheme.core.briefing.BriefingStore
+import com.sabertheme.core.briefing.Course
+import com.sabertheme.core.briefing.SaberVoice
 import com.sabertheme.core.briefing.CallLogSource
 import com.sabertheme.core.briefing.MailLabeler
 import com.sabertheme.core.briefing.MoodleAccount
@@ -23,6 +26,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -36,6 +40,8 @@ class SettingsViewModel @Inject constructor(
     private val labeler: MailLabeler,
     private val callLog: CallLogSource,
     private val briefing: BriefingBridge,
+    private val briefingStore: BriefingStore,
+    private val voice: SaberVoice,
 ) : ViewModel() {
 
     val settings: StateFlow<GlassSettings> =
@@ -188,10 +194,25 @@ class SettingsViewModel @Inject constructor(
 
     fun callLogGranted(): Boolean = callLog.granted()
 
+    /** Module code → name from Moodle, shown so the owner can see what she will say. */
+    val courses: StateFlow<List<Course>> = briefingStore.courses.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** Her voice on today's briefing, or a sample line when there is nothing to report. */
+    fun previewVoice() {
+        viewModelScope.launch {
+            val briefing = briefingStore.briefing.first()
+            voice.speak(briefing?.spoken?.takeIf { briefing.items.isNotEmpty() } ?: SAMPLE)
+        }
+    }
+
+    override fun onCleared() = voice.stop()
+
     /** A source was just allowed: brief again now rather than at the next hourly run. */
     fun sourceAllowed() = briefing.refreshNow()
 
     private companion object {
         const val TAG = "SettingsViewModel"
+        const val SAMPLE = "Notice. One matter requires your attention, Master. " +
+            "Assignment 3 for Introduction to Engineering Optimization is due on Monday at 11:59 PM. End of report."
     }
 }

@@ -67,6 +67,10 @@ internal fun BriefingRows(visible: Boolean, settings: GlassSettings, viewModel: 
     // Re-read grants on every resume: the user changes them in Android settings.
     val resumed by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsStateWithLifecycle()
     Divider()
+    SettingRow("Voice", "Calm and even, like a sage reporting; tap to hear", onClick = viewModel::previewVoice) {
+        Value("Play")
+    }
+    Divider()
     SettingRow("Speak urgent items", "Never 22:00–07:00, on silent, in Do Not Disturb or over music") {
         GlassSwitch(settings.briefingSpeakUrgent, viewModel::setBriefingSpeakUrgent)
     }
@@ -102,6 +106,7 @@ private fun MoodleRows(viewModel: SettingsViewModel) {
         SettingRow("Moodle", "${connected.username} · ${connected.site.removePrefix("https://")}", onClick = viewModel::disconnectMoodle) {
             Value("Sign out")
         }
+        ModuleIndex(viewModel)
         return
     }
     var site by rememberSaveable { mutableStateOf("") }
@@ -133,6 +138,25 @@ private fun MoodleRows(viewModel: SettingsViewModel) {
         )
         (status as? MoodleStatus.Failed)?.let {
             BasicText(it.message, style = Saber.type.captionIcon.copy(color = Saber.colors.accent))
+        }
+    }
+}
+
+/** Which module each code is; she says the name, the cloud shows the code beside the date. */
+@Composable
+private fun ModuleIndex(viewModel: SettingsViewModel) {
+    val courses by viewModel.courses.collectAsStateWithLifecycle()
+    Divider()
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        BasicText("Modules", style = Saber.type.body.copy(color = Saber.colors.textPrimary))
+        if (courses.isEmpty()) {
+            BasicText("Read from Moodle on the next briefing run", style = Saber.type.captionIcon.copy(color = Saber.colors.textSecondary))
+        }
+        courses.forEach { course ->
+            BasicText(
+                "${course.code}  ·  ${course.name}",
+                style = Saber.type.captionIcon.copy(color = Saber.colors.textSecondary),
+            )
         }
     }
 }

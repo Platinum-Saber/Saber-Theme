@@ -3,6 +3,8 @@
 
     <!-- Briefing: missed calls Saber mentions. Asked from Settings → Briefing, never at startup. -->
     <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <!-- Saber's voice: the faint reverb is an output-mix effect (audio session 0). Normal permission. -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
     <application>
         <!-- Mail labeller: LiteRT-LM's GPU backend needs the vendor OpenCL libraries;
