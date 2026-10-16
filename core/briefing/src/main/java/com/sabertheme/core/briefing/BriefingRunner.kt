@@ -56,7 +56,7 @@ class BriefingRunner @Inject constructor(
         val recent = state.labelled.filter { nowMs - it.postTime < DAY_MS }
         val input = BriefingInput(
             deadlines = deadlines,
-            mails = recent.map { BriefingInput.LabelledMail(it.key, it.sender, it.subject, it.verdict.label, it.postTime) },
+            mails = recent.map { BriefingInput.LabelledMail(it.key, MailRules.displayName(it.sender), it.subject, it.verdict.label, it.postTime) },
             deliveries = recent.mapNotNull { e ->
                 val info = e.verdict.delivery ?: return@mapNotNull null
                 BriefingInput.Delivery(e.key, info.item, info.status, info.eta, MailRules.arrivesToday(info), e.postTime)

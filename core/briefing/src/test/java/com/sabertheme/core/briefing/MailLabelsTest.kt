@@ -63,6 +63,14 @@ class MailLabelsTest {
     }
 
     @Test
+    fun `she says sender names, never addresses`() {
+        assertThat(MailRules.displayName("TechStart HR <hr@techstart.io>")).isEqualTo("TechStart HR")
+        assertThat(MailRules.displayName("\"Perera, A.\" <a.perera@uom.lk>")).isEqualTo("Perera, A.")
+        assertThat(MailRules.displayName("no-reply@daraz.lk")).isEqualTo("daraz")
+        assertThat(MailRules.displayName("Amma")).isEqualTo("Amma")
+    }
+
+    @Test
     fun `delivery today comes from the eta or the status`() {
         assertThat(MailRules.arrivesToday(DeliveryInfo("hub", "Out for delivery", ""))).isTrue()
         assertThat(MailRules.arrivesToday(DeliveryInfo("hub", "Shipped", "Today by 6 pm"))).isTrue()

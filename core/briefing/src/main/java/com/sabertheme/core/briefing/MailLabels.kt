@@ -109,6 +109,16 @@ internal object MailRules {
         return MailVerdict(label, if (label == MailLabel.Delivery) DeliveryInfo(mail.subject, "", "") else null)
     }
 
+    /**
+     * What she says for a sender: "TechStart HR <hr@techstart.io>" → "TechStart HR";
+     * a bare address becomes its domain's name ("no-reply@daraz.lk" → "daraz").
+     */
+    fun displayName(sender: String): String {
+        val name = sender.substringBefore('<').trim().trim('"', '\'')
+        if (name.isNotEmpty() && '@' !in name) return name
+        return address(sender).substringAfter('@').substringBefore('.').ifBlank { sender.trim() }
+    }
+
     /** "Daraz <no-reply@daraz.lk>" → "no-reply@daraz.lk"; a bare name stays as it is. */
     fun address(sender: String): String =
         Regex("<([^>]+)>").find(sender)?.groupValues?.get(1)?.trim() ?: sender.trim()
