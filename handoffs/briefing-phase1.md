@@ -21,13 +21,14 @@
 - **Mail labelling:** checked with 3 synthetic mails. The model loads in 13 s, takes 1–2 s per mail, and labelled all 3 correctly (Reply / Delivery with item and ETA / Urgent).
 - **Voice:** Emma loads in 1.6 s and renders at about 1.2× real time; the owner approved how she sounds.
 - **Cloud:** tapping it speaks with her mouth moving.
+- **In-app model download:** both models were downloaded from Settings → Briefing over Wi-Fi with the adb copies moved aside. Kokoro (132 MB) was cancelled at 1 MB, resumed, verified and unpacked to 189 MB. Gemma (2.6 GB) took about 16 min and passed SHA-256. After that the brain loaded both from `no_backup/briefing-models` ("Voice loaded in 1883 ms"; "Model loaded in 13642 ms", 1 test mail labelled by the model). Delete, with its "Delete?" confirm, removed the voice, and a re-download restored it.
 
 **On the device now:**
 - Briefing on; Moodle connected; call log allowed.
-- Models are in `Android/data/com.sabertheme.launcher/files/{models/gemma-4-E2B-it.litertlm, voices/kokoro-int8-multi-lang-v1_0/}`.
+- Models were downloaded in the app into `no_backup/briefing-models/` (`gemma-4-E2B-it.litertlm`, `kokoro-int8-multi-lang-v1_0/`). The old adb-pushed copies are still in `Android/data/com.sabertheme.launcher/files/{models,voices}.bak` (about 2.8 GB, unused; delete them once you're happy).
 - Settings backup is in the session scratchpad, not the repo.
 
-**Gotcha:** adb leaves pushed files owned by `shell` (mode 660, folders 770), and the app gets `Permission denied`. After any push, run:
+**Models:** download them from Settings → Briefing ("Voice" and "On-device model"). `ModelFiles` still falls back to an adb-pushed copy. If you push one anyway, keep in mind that adb leaves pushed files owned by `shell` (mode 660, folders 770) and the app gets `Permission denied`. After any push, run:
 `adb shell "find /sdcard/Android/data/com.sabertheme.launcher/files -type d -exec chmod 777 {} + ; find /sdcard/Android/data/com.sabertheme.launcher/files -type f -exec chmod 666 {} +"`
 (The top folder's own chmod fails; that's harmless.)
 
@@ -40,7 +41,7 @@
 - The perf check (Home should still draw 0 frames while she idles).
 
 ## Open items
-1. **In-app download of both models.** This would remove the adb push and chmod step. Gemma is 2.6 GB from HF `litert-community/gemma-4-E2B-it-litert-lm`; Kokoro is 132 MB from the sherpa-onnx `tts-models` release.
+1. **Download notification.** There is no `POST_NOTIFICATIONS`, so the dataSync progress notification shows only in the task manager. Ask for it if the owner wants it in the shade.
 2. **Make the voice faster.** Rendering is about 1.2× real time on CPU. Try `numThreads = 6`, or sherpa-onnx's NNAPI/XNNPACK provider.
 3. **Mail leaves the briefing only after 24 h.** It is not removed when it's read in Gmail. Remove it on `GmailNotifications.remove`.
 4. **Upgrade LiteRT-LM** 0.17.1 → 0.18.x after an on-device check.

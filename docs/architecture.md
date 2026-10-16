@@ -488,7 +488,8 @@ Settings → Mascot: Show Saber, outfit (Armour / Winter / Casual), message clou
 ## Briefing
 Saber reads out what needs attention: Moodle deadlines, important Gmail,
 deliveries, today's events and missed calls. Settings -> Briefing (off by
-default). Everything runs on the phone; the only network call is Moodle.
+default). Everything runs on the phone; the network calls are Moodle and
+the one-time model downloads.
 
 ```mermaid
 graph LR
@@ -540,10 +541,24 @@ graph LR
 - **When she speaks.** Opening the cloud reads the whole briefing. New
   `Urgency.Now` items are announced once, only if `SpeakGuard` allows it:
   Home visible, ringer on, no DND, no music, not recorded, 07:00-22:00.
-- **Models on the phone (Phase 1).** Pushed with adb to
-  `Android/data/com.sabertheme.launcher/files/{models,voices}`. adb leaves
-  them owned by `shell`, which the app can't open: after pushing, run
-  `chmod 666` on files and `chmod 777` on folders (see the handoff).
+- **Models on the phone.** Settings -> Briefing downloads them: the
+  "On-device model" row fetches Gemma (`gemma-4-E2B-it.litertlm`, 2.6 GB,
+  Hugging Face, pinned to a commit) and the "Voice" row fetches Kokoro
+  (`kokoro-int8-multi-lang-v1_0.tar.bz2`, 132 MB, the sherpa-onnx
+  `tts-models` release). Both specs live in `ModelPack`
+  (`BriefingModels.kt`), with the exact size and SHA-256.
+  `ModelDownloadWorker` runs in the main process (it only moves bytes) as
+  a `dataSync` foreground service, on Wi-Fi unless the owner taps "use
+  mobile data". It resumes from `<pack>.part` with a Range request, and it
+  checks free space, size and SHA-256 before moving the file into
+  `noBackupFilesDir/briefing-models/`. Kokoro is unpacked with
+  commons-compress; links and entries that would land outside the folder
+  are refused. `ModelDownloads.state` turns WorkInfo plus the files into
+  the row's state (Download / Waiting / progress + Cancel / Delete).
+  `ModelFiles.current` picks the downloaded copy first, then a copy pushed
+  over adb to `Android/data/.../files/{models,voices}` (Phase 1, which
+  still needs the chmod from the handoff). A finished download triggers a
+  briefing run.
 
 ## Security
 See `docs/security.md`: backup rules (layout + settings only), message

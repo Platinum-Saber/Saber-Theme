@@ -36,7 +36,11 @@ paths:
     VLC; asked by tapping the artwork badge, needs "Allow all").
   - `:core:briefing`: `READ_CALL_LOG` (missed calls in the briefing; asked
     from Settings -> Briefing), `MODIFY_AUDIO_SETTINGS` (normal; the reverb
-    on her voice is an output-mix effect). It also declares
+    on her voice is an output-mix effect), `INTERNET` +
+    `FOREGROUND_SERVICE` + `FOREGROUND_SERVICE_DATA_SYNC` (model downloads
+    from Settings; WorkManager's `SystemForegroundService` is merged with
+    `foregroundServiceType="dataSync"`; no `POST_NOTIFICATIONS`, so the
+    progress notification shows only in the task manager). It also declares
     `RemoteWorkerService` in `:brain` (not exported) and optional
     `libOpenCL.so` / `libvndksupport.so` for the GPU language model.
   Runtime permissions are only requested from a visible "Allow" control,
