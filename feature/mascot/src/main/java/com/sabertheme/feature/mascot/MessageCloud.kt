@@ -21,9 +21,13 @@ import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
 
+/** What a cloud row is: an unread chat, or a line of Saber's own briefing. */
+enum class CloudKind { Chat, Briefing }
+
 /**
  * A chat waiting on the phone, as her cloud shows it; [open] opens it in its
- * app, [dismiss] clears its notification.
+ * app, [dismiss] clears its notification. A [CloudKind.Briefing] first row
+ * turns the cloud into her briefing.
  */
 data class CloudMessage(
     val chat: String,
@@ -32,6 +36,7 @@ data class CloudMessage(
     val count: Int,
     val open: () -> Unit,
     val dismiss: () -> Unit,
+    val kind: CloudKind = CloudKind.Chat,
 )
 
 private val Chat = Color(0xFF25D366)
@@ -39,6 +44,9 @@ private val ChatDeep = Color(0xFF128C4A)
 private val Badge = Color(0xFFE5484D)
 
 private const val ROWS = 3
+private const val ROW_DP = 44f
+/** The "+N more" line under the rows when there are more than [ROWS]. */
+private const val MORE_DP = 22f
 private const val OPEN_FOR_S = 8f
 private const val FLIGHT_S = 0.7f
 private const val FLICK_DP_S = 900f
@@ -124,7 +132,7 @@ internal class MessageCloud(private val density: Density) {
     fun rowAt(y: Float): CloudMessage? {
         if (!expanded) return null
         val rowsTop = 12f.dp() + 22f.dp()
-        return if (y < rowsTop) null else messages.take(ROWS).getOrNull(((y - rowsTop) / 44f.dp()).toInt())
+        return if (y < rowsTop) null else messages.take(ROWS).getOrNull(((y - rowsTop) / ROW_DP.dp()).toInt())
     }
 
     /**
@@ -159,7 +167,8 @@ internal class MessageCloud(private val density: Density) {
         val margin = 8f.dp()
         if (expanded) {
             val width = minOf(260f.dp(), layerWidth - 2 * margin)
-            val height = 12f.dp() * 2 + 22f.dp() + 44f.dp() * messages.size.coerceAtMost(ROWS)
+            val more = if (messages.size > ROWS) MORE_DP.dp() else 0f
+            val height = 12f.dp() * 2 + 22f.dp() + ROW_DP.dp() * messages.size.coerceAtMost(ROWS) + more
             val right = (her.center.x + 30f.dp()).coerceIn(margin + width, layerWidth - margin)
             val bottom = her.top - 16f.dp()
             bounds = Rect(right - width, bottom - height, right, bottom)
@@ -200,7 +209,7 @@ internal class MessageCloud(private val density: Density) {
                     s.area, s.blobs, s.box, s.radius, s.blend,
                 )
             }
-            if (expanded) drawPreview(b, colors) else drawGlyph(b)
+            if (expanded) drawPreview(b, colors) else drawGlyph(b, colors)
         }
     }
 
@@ -274,21 +283,25 @@ internal class MessageCloud(private val density: Density) {
         }
     }
 
-    /** Just a small red dot on the cloud: something unread. */
-    private fun DrawScope.drawGlyph(b: Rect) {
+    private val briefing get() = messages.firstOrNull()?.kind == CloudKind.Briefing
+
+    /** Just a small dot on the cloud: red for something unread, blue for her briefing. */
+    private fun DrawScope.drawGlyph(b: Rect, colors: SaberColors) {
         val dot = Offset(b.right - 10f.dp(), b.top + 10f.dp())
         drawCircle(Color.White, 5.5f.dp(), dot)
-        drawCircle(Badge, 4.2f.dp(), dot)
+        drawCircle(if (briefing) colors.accent.copy(alpha = 1f) else Badge, 4.2f.dp(), dot)
     }
 
     private fun DrawScope.drawPreview(b: Rect, colors: SaberColors) {
         titlePaint.color = colors.textPrimary.copy(alpha = 1f).toArgb()
         textPaint.color = colors.textSecondary.toArgb()
-        headerPaint.color = (if (colors.isDark) Chat else ChatDeep).toArgb()
+        val isBriefing = briefing
+        val blue = colors.accent.copy(alpha = 1f)
+        headerPaint.color = (if (isBriefing) blue else if (colors.isDark) Chat else ChatDeep).toArgb()
         val pad = 14f.dp()
         val canvas = drawContext.canvas.nativeCanvas
-        val unread = messages.sumOf { it.count }
-        canvas.drawText("WhatsApp · $unread unread", b.left + pad, b.top + 12f.dp() + 14f.dp(), headerPaint)
+        val header = if (isBriefing) "Saber's briefing · ${messages.size}" else "WhatsApp · ${messages.sumOf { it.count }} unread"
+        canvas.drawText(header, b.left + pad, b.top + 12f.dp() + 14f.dp(), headerPaint)
         val textWidth = b.width - pad * 2 - 16f.dp()
         if (linesFor !== messages || linesWidth != textWidth) {
             linesFor = messages
@@ -300,12 +313,18 @@ internal class MessageCloud(private val density: Density) {
             }
         }
         lines.forEachIndexed { i, (title, text) ->
-            val top = b.top + 12f.dp() + 22f.dp() + i * 44f.dp()
+            val top = b.top + 12f.dp() + 22f.dp() + i * ROW_DP.dp()
             if (i > 0) drawLine(colors.textPrimary.copy(alpha = 0.12f), Offset(b.left + pad, top), Offset(b.right - pad, top), 1f.dp())
-            drawCircle(Chat, 4f.dp(), Offset(b.left + pad + 4f.dp(), top + 15f.dp()))
+            val m = messages.getOrNull(i)
+            drawCircle(if (m?.kind == CloudKind.Briefing) blue else Chat, 4f.dp(), Offset(b.left + pad + 4f.dp(), top + 15f.dp()))
             val x = b.left + pad + 16f.dp()
             canvas.drawText(title, x, top + 19f.dp(), titlePaint)
             canvas.drawText(text, x, top + 37f.dp(), textPaint)
+        }
+        val more = messages.size - ROWS
+        if (more > 0) {
+            val top = b.top + 12f.dp() + 22f.dp() + ROWS * ROW_DP.dp()
+            canvas.drawText("+$more more", b.left + pad + 16f.dp(), top + 15f.dp(), textPaint)
         }
     }
 

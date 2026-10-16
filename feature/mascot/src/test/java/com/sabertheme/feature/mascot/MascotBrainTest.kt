@@ -203,6 +203,42 @@ class MascotBrainTest {
     }
 
     @Test
+    fun talksUntilQuietWithoutSleepingOrTimingOut() {
+        brain.talk(0, 30_000)
+        assertThat(brain.mood).isEqualTo(Mood.Talking)
+        brain.tick(29_999, quietForMs = MascotBrain.SLEEP_AFTER_MS)
+        assertThat(brain.mood).isEqualTo(Mood.Talking)
+        brain.quiet(29_999)
+        assertThat(brain.mood).isEqualTo(Mood.Idle)
+    }
+
+    @Test
+    fun talkingEndsWhenItsTimeLimitPasses() {
+        brain.talk(0, 1_000)
+        brain.talk(800, 1_000) // still speaking: extends the limit
+        brain.tick(1_799)
+        assertThat(brain.mood).isEqualTo(Mood.Talking)
+        brain.tick(1_800)
+        assertThat(brain.mood).isEqualTo(Mood.Idle)
+    }
+
+    @Test
+    fun talkingInterruptsMomentsAndWanderButNotSulkingOrBeingHeld() {
+        brain.message(0)
+        brain.talk(100, 10_000)
+        assertThat(brain.mood).isEqualTo(Mood.Talking)
+        brain.quiet(200)
+        brain.poke(300); brain.poke(400); brain.poke(500)
+        brain.talk(600, 10_000)
+        assertThat(brain.mood).isEqualTo(Mood.Pout)
+        brain.quiet(700)
+        assertThat(brain.mood).isEqualTo(Mood.Pout)
+        brain.grab(800)
+        brain.talk(900, 10_000)
+        assertThat(brain.mood).isEqualTo(Mood.Held)
+    }
+
+    @Test
     fun heldOrSulkingSheIgnoresThePill() {
         brain.grab(0)
         brain.pillDropped(10)

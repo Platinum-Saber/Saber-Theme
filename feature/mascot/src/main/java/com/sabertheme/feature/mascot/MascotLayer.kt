@@ -66,6 +66,8 @@ private const val FRAME_MS = 22L
 private const val SAVER_FRAME_MS = 110L
 /** A finger this close to her chest gets a duel; farther away she points. */
 private const val NEAR_DP = 130f
+/** Talking ends on its own after this if the voice never reports it stopped. */
+private const val TALK_MAX_MS = 120_000L
 
 /**
  * Saber on the search bar. [anchor] is the search pill's window bounds; her
@@ -89,6 +91,8 @@ fun MascotLayer(
     messages: () -> List<CloudMessage> = { emptyList() },
     /** The glass pill around the camera that she slashes when it is dropped on Home. */
     pillEnabled: () -> Boolean = { true },
+    /** True while her voice is speaking (the briefing): she talks, mouth moving. */
+    speaking: () -> Boolean = { false },
 ) {
     val density = LocalDensity.current
     val view = LocalView.current
@@ -104,6 +108,7 @@ fun MascotLayer(
     val pill = remember { GlassPill(density) }
     var pillZone by remember { mutableStateOf(Rect.Zero) }
     val currentPillEnabled by rememberUpdatedState(pillEnabled)
+    val currentSpeaking by rememberUpdatedState(speaking)
     // Camera cutout (layer px) and status bar bottom (window px), read from the insets on layout.
     val cutout = remember { arrayOfNulls<Rect>(1) }
     val statusBar = remember { floatArrayOf(0f) }
@@ -152,6 +157,7 @@ fun MascotLayer(
         var fingerHeld = false
         var lastMood = brain.mood
         var groundSwingAt = -1f
+        var wasSpeaking = false
         // Always animating while Home shows her, capped near 30 fps (~8 fps in Power Saving).
         while (true) {
             delay(if (saver) SAVER_FRAME_MS else FRAME_MS)
@@ -229,6 +235,11 @@ fun MascotLayer(
             brain.awayFromHome = !physics.airborne && abs(physics.x - spot.x) > 2f * density.density
             val quietMs = (System.nanoTime() - env.lastInteractionNanos) / 1_000_000
             brain.tick(ms, quietMs, music())
+            // Back to talking once a poke or landing is over, while the voice still goes.
+            val talking = currentSpeaking()
+            if (talking && brain.mood != Mood.Talking) brain.talk(ms, TALK_MAX_MS)
+            if (!talking && wasSpeaking) brain.quiet(ms)
+            wasSpeaking = talking
 
             val u = h / 140f // px per rig unit
             val herBox = Rect(physics.x - w / 2f, physics.y - h, physics.x + w / 2f, physics.y)
@@ -265,7 +276,7 @@ fun MascotLayer(
             motion.facing = when {
                 brain.mood == Mood.Duel || brain.mood == Mood.Point -> motion.aimFacing
                 brain.mood == Mood.Walking -> sign(spot.x - physics.x).takeIf { it != 0f } ?: motion.facing
-                brain.mood == Mood.Idle || brain.mood == Mood.Dancing || brain.mood == Mood.Sleeping -> 1f
+                brain.mood == Mood.Idle || brain.mood == Mood.Dancing || brain.mood == Mood.Sleeping || brain.mood == Mood.Talking -> 1f
                 else -> motion.facing
             }
             feet = Offset(physics.x, physics.y)
@@ -275,7 +286,7 @@ fun MascotLayer(
             motion.blended = if (env.reducedMotion) target else motion.blended.approach(target, 1f - exp(-dt * POSE_RATE))
             // Lean with the phone: the tilt light moves off its rest direction.
             val tilt = if (env.effects.tilt) (env.light.x - GlassEnvironment.DEFAULT_LIGHT.x).coerceIn(-1f, 1f) else 0f
-            pose[0] = if (env.reducedMotion) motion.blended else motion.animate(brain, time, tilt)
+            pose[0] = if (env.reducedMotion) motion.blended else motion.animate(brain, time, tilt, talking)
             val topLeft = Offset(physics.x - w / 2f, physics.y - h) + origin
             surface.draw(density, topLeft, w, h, currentAlpha()) {
                 if (currentPillEnabled()) with(pill) { draw(topLeft - origin, origin, time, env, currentColors) }
@@ -469,6 +480,8 @@ private fun basePose(brain: MascotBrain, t: Float, nowMs: Long, motion: Motion, 
     Mood.Dizzy -> Pose.Dizzy
     Mood.Sleeping -> Pose.Sleepy
     Mood.Dancing -> Pose.Dancing
+    // Friendly and open while she reads out the briefing; [Motion.animate] moves her mouth.
+    Mood.Talking -> Pose.Neutral.copy(brows = Brows.Calm, mouth = Mouth.Smile, blush = 0.4f, armLeft = 20f, armRight = 28f, headTilt = 3f)
     // Aimed at the finger, eyes on it. The arm stops short of her face; the blade still points at it.
     Mood.Duel -> Pose(
         prop = Prop.Sword, armRight = motion.aimAngle.coerceAtMost(110f), swordAngle = 180f - motion.aimAngle, armLeft = 38f,
@@ -522,7 +535,8 @@ private class Motion {
         gazeY = g.y / len
     }
 
-    fun animate(brain: MascotBrain, t: Float, tilt: Float): Pose {
+    /** [speaking]: her voice is on, so her mouth moves (unless she's asleep). */
+    fun animate(brain: MascotBrain, t: Float, tilt: Float, speaking: Boolean = false): Pose {
         var p = blended
         // Swings ease in so the first one doesn't snap.
         swing += ((if (brain.mood == Mood.Duel) 1f else 0f) - swing) * 0.15f
@@ -579,6 +593,7 @@ private class Motion {
                 )
             }
             Mood.Point -> p = p.copy(armRight = p.armRight + 2.5f * sin(t * 4.5f))
+            Mood.Talking -> p = p.copy(headTilt = p.headTilt + 2f * sin(t * 2.2f), armRight = p.armRight + 8f * sin(t * 1.6f))
             Mood.Sleeping -> p = p.copy(headTilt = p.headTilt + 3f * sin(t * 1.3f), squash = p.squash * (1f + 0.02f * sin(t * 1.3f)))
             Mood.Moment -> when (brain.moment) {
                 MascotBrain.Moment.LookAround -> p = p.copy(headTurn = 0.8f * sin(t * 1.8f), headTilt = 4f * sin(t * 0.9f))
@@ -586,6 +601,11 @@ private class Motion {
                 else -> Unit
             }
             else -> Unit
+        }
+        // Syllables at ~6 Hz; the wobbling phase keeps them from ticking like a metronome.
+        if (speaking && brain.mood != Mood.Sleeping) {
+            val syllable = t * 12f + 0.8f * sin(t * 2.7f) + 0.5f * sin(t * 7.3f)
+            p = p.copy(mouth = if (syllable.toInt() % 2 == 0) Mouth.Open else Mouth.Smile)
         }
         if (brain.mood != Mood.Held) {
             lean = 0f

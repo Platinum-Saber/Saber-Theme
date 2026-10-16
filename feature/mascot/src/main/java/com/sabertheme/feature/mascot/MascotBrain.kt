@@ -24,6 +24,8 @@ class MascotBrain(private val random: Random = Random.Default) {
         Chase,
         /** Jumping at the pill (or swinging at it from the bar) to slash it. */
         Leap,
+        /** Reading out her briefing: [talk] starts it, [quiet] or its time limit ends it. */
+        Talking,
     }
 
     enum class Moment { LookAround, Stretch, SwordPractice, Sit, HeartHands, Curious, Thinking }
@@ -89,6 +91,24 @@ class MascotBrain(private val random: Random = Random.Default) {
         if (mood != Mood.Idle && mood != Mood.Moment && mood != Mood.Wander) return
         moment = Moment.Curious
         set(Mood.Moment, now, momentMs(Moment.Curious))
+    }
+
+    /**
+     * She starts speaking (the briefing voice), for at most [ms] in case
+     * [quiet] never comes. Livelier or sulking moods aren't interrupted;
+     * calling it again while talking extends the limit.
+     */
+    fun talk(now: Long, ms: Long) {
+        when (mood) {
+            Mood.Talking -> until = now + ms
+            Mood.Idle, Mood.Moment, Mood.Wander -> set(Mood.Talking, now, ms)
+            else -> Unit
+        }
+    }
+
+    /** The voice stopped. */
+    fun quiet(now: Long) {
+        if (mood == Mood.Talking) set(Mood.Idle, now, null)
     }
 
     /** The glass pill was dropped on Home: she runs for it (waking up if she has to). */
