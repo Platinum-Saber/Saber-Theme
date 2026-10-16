@@ -13,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -26,6 +27,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -222,13 +224,29 @@ private fun MoodleRows(viewModel: SettingsViewModel) {
 @Composable
 private fun ModuleIndex(viewModel: SettingsViewModel) {
     val courses by viewModel.courses.collectAsStateWithLifecycle()
+    // Collapsed by default: the index runs to 50+ rows and buries the rest of Settings.
+    var expanded by rememberSaveable { mutableStateOf(false) }
     Divider()
-    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        BasicText("Modules", style = Saber.type.body.copy(color = Saber.colors.textPrimary))
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clickable(enabled = courses.isNotEmpty()) { expanded = !expanded }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            BasicText("Modules", Modifier.weight(1f), style = Saber.type.body.copy(color = Saber.colors.textPrimary))
+            if (courses.isNotEmpty()) {
+                BasicText(
+                    if (expanded) "Hide" else "${courses.size} · Show",
+                    style = Saber.type.captionIcon.copy(color = Saber.colors.textSecondary),
+                )
+            }
+        }
         if (courses.isEmpty()) {
             BasicText("Read from Moodle on the next briefing run", style = Saber.type.captionIcon.copy(color = Saber.colors.textSecondary))
         }
-        courses.forEach { course ->
+        if (expanded) courses.forEach { course ->
             BasicText(
                 "${course.code}  ·  ${course.name}",
                 style = Saber.type.captionIcon.copy(color = Saber.colors.textSecondary),

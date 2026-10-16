@@ -26,7 +26,9 @@ private const val PILL_H_DP = 32f
  * Home), so the docked pill is pulled from an invisible strip this far below it.
  */
 private const val GRAB_GAP_DP = 16f
-private const val GRAB_HEIGHT_DP = 40f
+private const val GRAB_HEIGHT_DP = 32f
+/** Only a small patch centred under the pill grabs it, so Home icons beside it stay tappable. */
+private const val GRAB_WIDTH_DP = 48f
 private const val SNAP_BACK_DP = 40f
 private const val BREAK_S = 1.1f
 private const val STREAK_S = 0.15f
@@ -67,7 +69,8 @@ internal class GlassPill(private val density: Density) {
         get() = when (state) {
             State.Docked -> if (dock == Rect.Zero) Rect.Zero else {
                 val top = maxOf(dock.bottom, statusBottom) + GRAB_GAP_DP.dp()
-                Rect(dock.left - 8f.dp(), top, dock.right + 8f.dp(), top + GRAB_HEIGHT_DP.dp())
+                val half = GRAB_WIDTH_DP.dp() / 2
+                Rect(dock.center.x - half, top, dock.center.x + half, top + GRAB_HEIGHT_DP.dp())
             }
             State.Dragging, State.Resting -> bounds.inflate(12f.dp())
             else -> Rect.Zero

@@ -479,8 +479,8 @@ Settings → Mascot: Show Saber, outfit (Armour / Winter / Casual), message clou
   cutout (`rootWindowInsets.displayCutout`), drawn on her surface with
   `GlassBlobPainter`. One UI hands a touch that starts just under the status
   bar to its own pull-down gesture (`transferTouchGesture`, measured on the
-  S23), so the docked pill is pulled from an invisible strip 16-56 dp below
-  it (only the pill is drawn). Dropped near the camera it snaps back; dropped elsewhere
+  S23), so the docked pill is pulled from an invisible 48x32 dp patch centred
+  16 dp below it (only the pill is drawn; icons beside it stay tappable). Dropped near the camera it snaps back; dropped elsewhere
   it hovers and she runs under it (`Chase`), leaps so her head peaks at it
   (`MascotPhysics.leapTo`) or swings from the bar when it is within reach
   (`Leap`), and slashes it at the top of the jump: a white streak, then two
