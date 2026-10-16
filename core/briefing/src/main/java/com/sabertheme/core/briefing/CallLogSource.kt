@@ -27,9 +27,10 @@ class CallLogSource @Inject constructor(@ApplicationContext private val context:
                 arrayOf(CallLog.Calls._ID, CallLog.Calls.NUMBER, CallLog.Calls.CACHED_NAME, CallLog.Calls.DATE),
                 "${CallLog.Calls.TYPE} = ? AND ${CallLog.Calls.NEW} = 1 AND ${CallLog.Calls.DATE} >= ?",
                 arrayOf(CallLog.Calls.MISSED_TYPE.toString(), sinceMs.toString()),
-                "${CallLog.Calls.DATE} DESC LIMIT $MAX_CALLS",
+                // No "LIMIT" in the sort order: Android 16's call log provider rejects it.
+                "${CallLog.Calls.DATE} DESC",
             )?.use { c ->
-                while (c.moveToNext()) {
+                while (size < MAX_CALLS && c.moveToNext()) {
                     val number = c.getString(1).orEmpty().ifBlank { "Unknown" }
                     val name = c.getString(2)?.takeIf { it.isNotBlank() }
                     add(BriefingInput.MissedCall("call:${c.getLong(0)}", name ?: number, number, c.getLong(3)))

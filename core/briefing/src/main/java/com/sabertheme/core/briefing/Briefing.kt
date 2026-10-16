@@ -34,6 +34,9 @@ data class Briefing(
     val spoken: String,
     val urgentKeys: List<String>,
     val urgentSpoken: String = "",
+    /** [spoken] and [urgentSpoken] in her neural voice, when `:brain` could render them. */
+    val spokenAudio: String? = null,
+    val urgentAudio: String? = null,
 )
 
 /** Labels the mail labeller can give; see `MailLabeler`. */

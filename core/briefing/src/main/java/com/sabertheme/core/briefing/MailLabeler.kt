@@ -64,10 +64,12 @@ class MailLabeler @Inject constructor(@ApplicationContext private val context: C
             throw e
         } catch (e: Exception) {
             // A GPU or model failure must not lose the briefing: rules label the rest.
-            Log.w(TAG, "Model failed: ${e.javaClass.simpleName}")
+            // The engine's own message (paths, backend, status codes) carries no mail text.
+            Log.w(TAG, "Model failed: ${e.javaClass.simpleName}: ${e.message?.take(300)}")
             forModel.filter { it.key !in verdicts }.forEach { verdicts[it.key] = MailRules.fallback(it) }
         } finally {
-            engine.close()
+            // close() throws on an engine that never initialised; that must not lose the run.
+            runCatching { engine.close() }
         }
         verdicts
     }

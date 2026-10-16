@@ -67,9 +67,16 @@ internal fun BriefingRows(visible: Boolean, settings: GlassSettings, viewModel: 
     // Re-read grants on every resume: the user changes them in Android settings.
     val resumed by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsStateWithLifecycle()
     Divider()
-    SettingRow("Voice", "Calm and even, like a sage reporting; tap to hear", onClick = viewModel::previewVoice) {
-        Value("Play")
-    }
+    val neural = remember(visible, resumed) { viewModel.neuralVoiceReady() }
+    SettingRow(
+        "Voice",
+        if (neural) {
+            "Emma (Kokoro, on this phone) · calm, like a sage reporting; tap to hear"
+        } else {
+            "Phone voice for now. For Emma, copy the Kokoro pack to ${viewModel.voicePath}"
+        },
+        onClick = viewModel::previewVoice,
+    ) { Value("Play") }
     Divider()
     SettingRow("Speak urgent items", "Never 22:00–07:00, on silent, in Do Not Disturb or over music") {
         GlassSwitch(settings.briefingSpeakUrgent, viewModel::setBriefingSpeakUrgent)

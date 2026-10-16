@@ -6,6 +6,8 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sabertheme.core.briefing.BriefingBridge
+import com.sabertheme.core.briefing.BriefingClips
+import com.sabertheme.core.briefing.SageVoiceEngine
 import com.sabertheme.core.briefing.BriefingStore
 import com.sabertheme.core.briefing.Course
 import com.sabertheme.core.briefing.SaberVoice
@@ -42,6 +44,8 @@ class SettingsViewModel @Inject constructor(
     private val briefing: BriefingBridge,
     private val briefingStore: BriefingStore,
     private val voice: SaberVoice,
+    private val clips: BriefingClips,
+    private val sage: SageVoiceEngine,
 ) : ViewModel() {
 
     val settings: StateFlow<GlassSettings> =
@@ -194,6 +198,11 @@ class SettingsViewModel @Inject constructor(
 
     fun callLogGranted(): Boolean = callLog.granted()
 
+    /** The neural voice's files are on the phone; until then Samsung TTS speaks. */
+    fun neuralVoiceReady(): Boolean = sage.available
+
+    val voicePath: String get() = sage.modelDir.path
+
     /** Module code → name from Moodle, shown so the owner can see what she will say. */
     val courses: StateFlow<List<Course>> = briefingStore.courses.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
@@ -201,7 +210,11 @@ class SettingsViewModel @Inject constructor(
     fun previewVoice() {
         viewModelScope.launch {
             val briefing = briefingStore.briefing.first()
-            voice.speak(briefing?.spoken?.takeIf { briefing.items.isNotEmpty() } ?: SAMPLE)
+            if (briefing != null && briefing.items.isNotEmpty()) {
+                voice.speak(briefing.spoken, briefing.spokenAudio)
+            } else {
+                voice.speak(BriefingClips.SAMPLE, clips.sample.path)
+            }
         }
     }
 
@@ -212,7 +225,6 @@ class SettingsViewModel @Inject constructor(
 
     private companion object {
         const val TAG = "SettingsViewModel"
-        const val SAMPLE = "Notice. One matter requires your attention, Master. " +
-            "Assignment 3 for Introduction to Engineering Optimization is due on Monday at 11:59 PM. End of report."
+
     }
 }

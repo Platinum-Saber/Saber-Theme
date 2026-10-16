@@ -21,11 +21,12 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Saber's voice, in the manner of a sage: calm, even and a touch slow, with a
- * faint room echo, as if heard inside your head. The words come from the
- * phone's own text-to-speech engine (Samsung TTS on the S23; free, on-device),
- * rendered to a file and played through a reverb; if the effect is not
- * available she speaks dry. Music ducks under her. [speaking] drives her mouth.
+ * Saber's voice, in the manner of a sage, with a faint room echo as if heard
+ * inside your head. Her lines normally arrive pre-rendered in the neural voice
+ * ([SageVoiceEngine], made in `:brain`); without a clip, the phone's own
+ * text-to-speech engine (Samsung TTS on the S23) renders the text here, calm
+ * and a touch slow. Either way it plays through the reverb, dry where the
+ * effect is missing. Music ducks under her. [speaking] drives her mouth.
  * Home only; created on first use.
  */
 @Singleton
@@ -52,9 +53,12 @@ class SaberVoice @Inject constructor(@ApplicationContext private val context: Co
     private var reverb: PresetReverb? = null
     private var utterance = 0
 
-    fun speak(text: String) {
+    /** Plays [clip] when it exists (instant); otherwise renders [text] with the system engine first. */
+    fun speak(text: String, clip: String? = null) {
         if (text.isBlank()) return
         stopPlayback()
+        utterance++
+        clip?.let(::File)?.takeIf { it.isFile }?.let { return play(it) }
         val engine = tts ?: create()
         if (ready) render(engine, text) else pending = text
     }
@@ -93,7 +97,7 @@ class SaberVoice @Inject constructor(@ApplicationContext private val context: Co
             override fun onStart(utteranceId: String?) = Unit
 
             override fun onDone(utteranceId: String?) {
-                main.post { if (utteranceId == current()) play() }
+                main.post { if (utteranceId == current()) play(clip) }
             }
 
             @Deprecated("Deprecated in Java")
@@ -117,12 +121,12 @@ class SaberVoice @Inject constructor(@ApplicationContext private val context: Co
         engine.synthesizeToFile(text, null, clip, current())
     }
 
-    private fun play() {
+    private fun play(file: File) {
         stopPlayback()
         val mp = MediaPlayer()
         try {
             mp.setAudioAttributes(attributes)
-            mp.setDataSource(clip.path)
+            mp.setDataSource(file.path)
             mp.prepare()
             attachReverb(mp)
             mp.setOnCompletionListener { finished() }

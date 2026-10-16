@@ -12,6 +12,10 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // sherpa-onnx (Saber's on-device voice) is only published here; nothing else may come from it.
+        maven("https://jitpack.io") {
+            content { includeGroup("com.github.k2-fsa.sherpa-onnx") }
+        }
     }
 }
 

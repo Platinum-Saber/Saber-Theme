@@ -20,6 +20,7 @@ import javax.inject.Singleton
 class BriefingBridge @Inject constructor(
     @ApplicationContext private val context: Context,
     private val store: BriefingStore,
+    private val clips: BriefingClips,
 ) {
     fun start(scope: CoroutineScope, enabled: Flow<Boolean>) {
         scope.launch {
@@ -33,6 +34,7 @@ class BriefingBridge @Inject constructor(
                     GmailNotifications.onNew = null
                     Briefings.cancel(context)
                     store.clear()
+                    clips.clear()
                 }
             }
         }

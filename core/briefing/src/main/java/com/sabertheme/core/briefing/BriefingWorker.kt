@@ -34,7 +34,8 @@ class BriefingWorker(context: Context, params: WorkerParameters) : RemoteCorouti
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
-        Log.w("SaberBrain", "Briefing run failed: ${e.javaClass.simpleName}")
+        // Stack traces name code, not mail: the runner never puts message text into exceptions.
+        Log.w("SaberBrain", "Briefing run failed", e)
         if (runAttemptCount < 2) Result.retry() else Result.failure()
     }
 }

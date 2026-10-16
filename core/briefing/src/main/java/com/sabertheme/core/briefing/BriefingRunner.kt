@@ -22,6 +22,8 @@ class BriefingRunner @Inject constructor(
     private val calendar: CalendarSource,
     private val calls: CallLogSource,
     private val moodle: MoodleClient,
+    private val voice: SageVoiceEngine,
+    private val clips: BriefingClips,
 ) {
     suspend fun run() {
         val started = SystemClock.elapsedRealtime()
@@ -43,10 +45,12 @@ class BriefingRunner @Inject constructor(
             null
         } ?: store.snapshot().deadlines.map { BriefingInput.Deadline(it.key, it.course, it.task, it.dueMs, it.url, it.code) }
 
-        val events = calendar.upcoming(hours = 24).map {
-            BriefingInput.Event("event:${it.id}:${it.start}", it.title, it.start.atZone(zone).toInstant().toEpochMilli(), it.allDay)
+        val events = soft("Calendar") {
+            calendar.upcoming(hours = 24).map {
+                BriefingInput.Event("event:${it.id}:${it.start}", it.title, it.start.atZone(zone).toInstant().toEpochMilli(), it.allDay)
+            }
         }
-        val missed = calls.missedSince(nowMs - DAY_MS)
+        val missed = soft("Call log") { calls.missedSince(nowMs - DAY_MS) }
 
         val state = store.snapshot()
         val recent = state.labelled.filter { nowMs - it.postTime < DAY_MS }
@@ -62,12 +66,38 @@ class BriefingRunner @Inject constructor(
         )
         val briefing = BriefingComposer.compose(input, now, zone, state.spoken.toSet(), seed = LocalDate.now(zone).dayOfYear)
         store.update { it.copy(briefing = briefing) }
+        renderVoice(briefing)
         Log.i(
             TAG,
             "Briefing: ${briefing.items.size} items, ${briefing.urgentKeys.size} urgent " +
                 "(${deadlines.size} deadlines, ${recent.size} mails, ${events.size} events, ${missed.size} calls) " +
                 "in ${SystemClock.elapsedRealtime() - started} ms",
         )
+    }
+
+    /** One source failing leaves its part out instead of losing the whole briefing. */
+    private suspend fun <T> soft(source: String, read: suspend () -> List<T>): List<T> = try {
+        read()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Log.w(TAG, "$source skipped", e)
+        emptyList()
+    }
+
+    /** Her lines in the neural voice, after the briefing is already showing; same text reuses its clip. */
+    private suspend fun renderVoice(briefing: Briefing) {
+        val full = clips.fileFor(briefing.spoken)
+        val urgent = briefing.urgentSpoken.takeIf { it.isNotBlank() }?.let(clips::fileFor)
+        val sample = clips.fileFor(BriefingClips.SAMPLE)
+        val wanted = listOfNotNull(full to briefing.spoken, urgent?.let { it to briefing.urgentSpoken }, sample to BriefingClips.SAMPLE)
+        voice.render(wanted.filterNot { it.first.exists() }.toMap())
+        clips.keepOnly(wanted.map { it.first })
+        store.update { s ->
+            val current = s.briefing ?: return@update s
+            if (current.builtAtMs != briefing.builtAtMs) return@update s
+            s.copy(briefing = current.copy(spokenAudio = full.takeIf { it.exists() }?.path, urgentAudio = urgent?.takeIf { it.exists() }?.path))
+        }
     }
 
     /** The module index changes once a term; once a day is plenty. */

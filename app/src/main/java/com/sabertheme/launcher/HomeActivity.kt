@@ -155,7 +155,7 @@ class HomeActivity : ComponentActivity() {
                 )
                 if (may) {
                     briefingStore.markSpoken(b.urgentKeys)
-                    voice.speak(b.urgentSpoken)
+                    voice.speak(b.urgentSpoken, b.urgentAudio)
                 }
             }
 
@@ -202,7 +202,7 @@ class HomeActivity : ComponentActivity() {
                                             speaking = { speaking },
                                             onCloudOpened = {
                                                 val b = briefing
-                                                if (settings.briefing && b != null && cloudMessages.any { it.kind == CloudKind.Briefing }) voice.speak(b.spoken)
+                                                if (settings.briefing && b != null && cloudMessages.any { it.kind == CloudKind.Briefing }) voice.speak(b.spoken, b.spokenAudio)
                                             },
                                         )
                                     }
