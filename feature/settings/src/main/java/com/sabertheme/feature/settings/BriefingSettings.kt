@@ -73,7 +73,7 @@ internal fun BriefingRows(visible: Boolean, settings: GlassSettings, viewModel: 
     Divider()
     MoodleRows(viewModel)
     Divider()
-    CallLogRow(remember(visible, resumed) { viewModel.callLogGranted() })
+    CallLogRow(remember(visible, resumed) { viewModel.callLogGranted() }, viewModel::sourceAllowed)
     Divider()
     val listening = remember(visible, resumed) { context.packageName in NotificationManagerCompat.getEnabledListenerPackages(context) }
     SettingRow(
@@ -162,13 +162,14 @@ private fun Field(value: String, onChange: (String) -> Unit, hint: String, type:
 }
 
 @Composable
-private fun CallLogRow(granted: Boolean) {
+private fun CallLogRow(granted: Boolean, onAllowed: () -> Unit) {
     val context = LocalContext.current
     var asked by rememberSaveable { mutableStateOf(false) }
     var allowed by remember(granted) { mutableStateOf(granted) }
     val request = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         allowed = ok
         asked = true
+        if (ok) onAllowed()
     }
     SettingRow(
         "Missed calls",

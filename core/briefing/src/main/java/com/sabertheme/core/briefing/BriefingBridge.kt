@@ -38,6 +38,9 @@ class BriefingBridge @Inject constructor(
         }
     }
 
+    /** A run right away: a source was just connected or allowed in Settings. */
+    fun refreshNow() = Briefings.runSoon(context, delayMs = 0)
+
     /** A fresh run when Home comes back and the briefing is older than [maxAgeMs]. */
     suspend fun refreshIfStale(builtAtMs: Long?, maxAgeMs: Long = 30 * 60_000L) {
         if (builtAtMs == null || System.currentTimeMillis() - builtAtMs > maxAgeMs) Briefings.runSoon(context, delayMs = 0)

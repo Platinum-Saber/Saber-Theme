@@ -5,6 +5,7 @@ import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.sabertheme.core.briefing.BriefingBridge
 import com.sabertheme.core.briefing.CallLogSource
 import com.sabertheme.core.briefing.MailLabeler
 import com.sabertheme.core.briefing.MoodleAccount
@@ -34,6 +35,7 @@ class SettingsViewModel @Inject constructor(
     secrets: SecretsStore,
     private val labeler: MailLabeler,
     private val callLog: CallLogSource,
+    private val briefing: BriefingBridge,
 ) : ViewModel() {
 
     val settings: StateFlow<GlassSettings> =
@@ -163,6 +165,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             _moodleStatus.value = try {
                 moodleClient.connect(site, username, password)
+                briefing.refreshNow()
                 MoodleStatus.Idle
             } catch (e: MoodleException) {
                 MoodleStatus.Failed(e.message ?: "Moodle said no")
@@ -184,6 +187,9 @@ class SettingsViewModel @Inject constructor(
     val modelPath: String get() = labeler.modelFile.path
 
     fun callLogGranted(): Boolean = callLog.granted()
+
+    /** A source was just allowed: brief again now rather than at the next hourly run. */
+    fun sourceAllowed() = briefing.refreshNow()
 
     private companion object {
         const val TAG = "SettingsViewModel"
