@@ -18,4 +18,5 @@ dependencies {
     implementation(libs.sherpa.onnx.android)
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.work.multiprocess)
+    implementation(libs.commons.compress)
 }

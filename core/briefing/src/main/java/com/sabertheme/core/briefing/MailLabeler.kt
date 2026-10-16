@@ -28,10 +28,13 @@ import javax.inject.Singleton
  * batch and is closed after. Without the model file, [MailRules] label alone.
  */
 @Singleton
-class MailLabeler @Inject constructor(@ApplicationContext private val context: Context) {
+class MailLabeler @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val files: ModelFiles,
+) {
 
-    /** Where Settings tells the owner to put the model (`adb push`/`cp` in Phase 1). */
-    val modelFile: File get() = File(context.getExternalFilesDir(MODEL_DIR), MODEL_NAME)
+    /** The downloaded model, else one pushed over adb (Phase 1). */
+    val modelFile: File get() = files.current(ModelPack.Gemma)
 
     suspend fun label(mails: List<QueuedMail>): Map<String, MailVerdict> = withContext(Dispatchers.Default) {
         val verdicts = mutableMapOf<String, MailVerdict>()
@@ -76,8 +79,6 @@ class MailLabeler @Inject constructor(@ApplicationContext private val context: C
 
     private companion object {
         const val TAG = "SaberBrain"
-        const val MODEL_DIR = "models"
-        const val MODEL_NAME = "gemma-4-E2B-it.litertlm"
         val Config = ConversationConfig(samplerConfig = SamplerConfig(topK = 10, topP = 0.95, temperature = 0.25))
     }
 }

@@ -1,10 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Briefing: missed calls Saber mentions. Asked from Settings → Briefing, never at startup. -->
     <uses-permission android:name="android.permission.READ_CALL_LOG" />
     <!-- Saber's voice: the faint reverb is an output-mix effect (audio session 0). Normal permission. -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- Model downloads (ModelDownloadWorker): Gemma from Hugging Face, Kokoro from
+         GitHub, started from Settings -> Briefing. Normal permissions. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <application>
         <!-- Mail labeller: LiteRT-LM's GPU backend needs the vendor OpenCL libraries;
@@ -18,6 +24,12 @@
             android:name="androidx.work.multiprocess.RemoteWorkerService"
             android:exported="false"
             android:process=":brain" />
+
+        <!-- WorkManager's own foreground service, typed for the model downloads. -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
     </application>
 
 </manifest>

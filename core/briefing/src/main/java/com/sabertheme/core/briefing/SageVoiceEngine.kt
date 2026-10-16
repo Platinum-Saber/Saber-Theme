@@ -1,6 +1,5 @@
 package com.sabertheme.core.briefing
 
-import android.content.Context
 import android.os.SystemClock
 import android.util.Log
 import com.k2fsa.sherpa.onnx.GenerationConfig
@@ -8,7 +7,6 @@ import com.k2fsa.sherpa.onnx.OfflineTts
 import com.k2fsa.sherpa.onnx.OfflineTtsConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsKokoroModelConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsModelConfig
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -24,12 +22,12 @@ import javax.inject.Singleton
  * loads in Home's process. Without the model files, Samsung TTS speaks instead.
  */
 @Singleton
-class SageVoiceEngine @Inject constructor(@ApplicationContext private val context: Context) {
+class SageVoiceEngine @Inject constructor(private val files: ModelFiles) {
 
-    /** Where Settings tells the owner to push the extracted Kokoro pack (Phase 1). */
-    val modelDir: File get() = File(context.getExternalFilesDir(VOICE_DIR), MODEL_NAME)
+    /** The downloaded Kokoro pack, else one pushed over adb (Phase 1). */
+    val modelDir: File get() = files.current(ModelPack.Kokoro)
 
-    val available: Boolean get() = REQUIRED.all { File(modelDir, it).exists() }
+    val available: Boolean get() = files.ready(ModelPack.Kokoro)
 
     /** Renders each [lines] entry to its file; returns the files written. Loads the model once for all. */
     suspend fun render(lines: Map<File, String>): Set<File> = withContext(Dispatchers.Default) {
@@ -86,10 +84,8 @@ class SageVoiceEngine @Inject constructor(@ApplicationContext private val contex
 
     companion object {
         private const val TAG = "SaberBrain"
-        private const val VOICE_DIR = "voices"
         const val MODEL_NAME = "kokoro-int8-multi-lang-v1_0"
         const val VOICE_NAME = "Emma"
-        private val REQUIRED = listOf("model.int8.onnx", "voices.bin", "tokens.txt", "espeak-ng-data", "lexicon-gb-en.txt")
 
         /** bf_emma in the kokoro-multi-lang-v1_0 speaker table. */
         private const val SPEAKER = 21
